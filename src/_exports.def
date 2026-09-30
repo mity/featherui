@@ -1,0 +1,10 @@
+LIBRARY feather
+EXPORTS
+    feVersion
+    feVersionStr
+    feInitialize
+    feTerminate
+    feRun
+    feQuit
+    feAppWindow_Create
+    DllGetVersion
