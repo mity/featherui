@@ -5,14 +5,14 @@ set(SOURCES
     # Generated header:
     ${PROJECT_BINARY_DIR}/include/project.h
 
-    # Source files:     # Internal header:  # Public header:
+    # *.c:          # *.h:                  # public *.h:
     # =========================================================================
-                                            ../include/feather.h
-    appwindow.c         appwindow.h         ../include/feather/appwindow.h
-    mainloop.c          mainloop.h
-    misc.c              misc.h
-    paint.c             paint.h
+    appwindow.c     appwindow.h             ../include/feather/appwindow.h
+    draw.c          draw.h draw_internal.h
+    mainloop.c      mainloop.h
+    misc.c          misc.h
     version.c                               ../include/feather/version.h
+                                            ../include/feather.h
 )
 set(DLL_SOURCES
     ${SOURCES}
@@ -22,15 +22,18 @@ set(STATIC_SOURCES
     ${SOURCES}
 )
 
-set(LIBS d2d1)
+set(LIBS
+    c_d2d_dwrite ex         # ../external
+    dxguid dxgi d2d1 d3d11  # system/toolchain
+)
 
 set(PUBLIC_INCDIRS
     "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 set(PRIVATE_INCDIRS
-    # for the generated project.h:
     ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_SOURCE_DIR}/external
 )
 
 add_definitions(-DFEATHER_BUILD)
@@ -46,13 +49,7 @@ if(FEATHER_BUILD_DLL)
     add_library(feather SHARED ${DLL_SOURCES})
     target_compile_definitions(feather PRIVATE -DFEATHER_BUILD_DLL)
     target_link_libraries(feather PRIVATE ${LIBS})
-    target_include_directories(feather PUBLIC ${PUBLIC_INCDIRS} PRIVATE ${PRIVATE_INCDIRS}
-
-        # C-compatible COM interfaces for <d2d1.h> and <dwrite.h>:
-        SYSTEM
-        ${PROJECT_SOURCE_DIR}/external/c_d2d_dwrite
-
-    )
+    target_include_directories(feather PUBLIC ${PUBLIC_INCDIRS} PRIVATE ${PRIVATE_INCDIRS})
     add_library(featherui ALIAS feather)
 endif()
 

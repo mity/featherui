@@ -21,7 +21,8 @@ feVersion(FeVersion* lpVersion)
 const WCHAR* FEATHER_API
 feVersionStr(void)
 {
-    return  STRINGIZE(PROJECT_MAJOR_VERSION)
+    return  L""
+            STRINGIZE(PROJECT_MAJOR_VERSION)
             "."
             STRINGIZE(PROJECT_MINOR_VERSION)
             "."

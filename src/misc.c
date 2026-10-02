@@ -5,7 +5,7 @@
 #include "project.h"
 /* The following ones are included just for their init/fini functions. */
 #include "appwindow.h"
-#include "paint.h"
+#include "draw.h"
 
 
 HMODULE dll_feather = NULL;
@@ -226,13 +226,13 @@ static const struct {
     void (*func_fini)(void);
 } module_map[] = {
 #ifdef DEBUG
-    #define MODULE(func_init, func_fini)      { STRINGIZE_A(func_init) "()", (func_init), (func_fini) }
+    #define MODULE(func_init, func_fini)      { STRINGIZE(func_init) "()", (func_init), (func_fini) }
 #else
     #define MODULE(func_init, func_fini)      { (func_init), (func_fini) }
 #endif
 
     /* Carefull here: The order matters, there may be module dependencies. */
-    MODULE(paint_init,      paint_fini),
+    MODULE(draw_init,       draw_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE
@@ -246,6 +246,44 @@ feTerminate_impl(int count)
         count--;
         module_map[count].func_fini();
     }
+}
+
+/* Called from feInitialize() as well as from DllMain(). */
+static void
+trace_hr_once(void)
+{
+    static BOOL was_here = FALSE;
+
+    if(was_here)
+        return;
+
+    TRACE("========================================================");
+    was_here = TRUE;
+}
+
+BOOL CALLBACK
+DllMain(HINSTANCE hInstance, DWORD reason, void* reserved)
+{
+    UNUSED(hInstance);
+
+    switch(reason) {
+        case DLL_PROCESS_ATTACH:
+            trace_hr_once();
+            if(reserved != NULL)
+                TRACE("FeatherUI loading (process startup)");
+            else
+                TRACE("FeatherUI loading (LoadLibrary())");
+            break;
+
+        case DLL_PROCESS_DETACH:
+            if(reserved != NULL)
+                TRACE("FeatherUI unloading (process termination)");
+            else
+                TRACE("FeatherUI unloading (FreeLibrary())");
+            break;
+    }
+
+    return TRUE;
 }
 
 
@@ -262,10 +300,20 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
 
     UNUSED(dwFlags);
 
+    trace_hr_once();
+
     TRACE("FeatherUI version %u.%u.%u (%u-bit)",
           PROJECT_MAJOR_VERSION, PROJECT_MINOR_VERSION, PROJECT_PATCH_VERSION,
           CHAR_BIT * sizeof(void*)
     );
+
+#ifdef FEATHER_BUILD_DLL
+    TRACE("(built as DLL)");
+#endif
+
+#ifdef FEATHER_BUILD_STATIC
+    TRACE("(built as a static lib)");
+#endif
 
     if(allocator != NULL  &&  allocator->cbSize != sizeof(FeAllocator)) {
         TRACE("initialize: invalid FeAllocator::cbSize.");

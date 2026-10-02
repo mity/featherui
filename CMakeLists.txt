@@ -91,3 +91,5 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(demo)
+add_subdirectory(external)
+

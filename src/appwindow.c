@@ -2,7 +2,7 @@
 #include <feather/appwindow.h>
 #include "mainloop.h"
 #include "misc.h"
-#include "paint.h"
+#include "draw.h"
 
 
 static const WCHAR appwindow_classname[] = L"feather::AppWindow";
@@ -12,6 +12,7 @@ static unsigned appwindow_count = 0;
 typedef struct AppWindow AppWindow;
 struct AppWindow {
     HWND hwnd;
+    DrawCanvas* canvas;
 };
 
 
@@ -25,11 +26,15 @@ appwindow_get_count(void)
 static void
 appwindow_WM_PAINT(AppWindow* app_win)
 {
+    static const DrawColor light_blue = { 0.9, 0.9, 1.0, 1.0 };
     PAINTSTRUCT ps;
 
-    BeginPaint(app_win->hwnd, &ps);
-    xxx(app_win->hwnd, &ps);
-    EndPaint(app_win->hwnd, &ps);
+    if(!draw_begin(app_win->canvas, &ps))
+        return;
+
+    draw_clear(app_win->canvas, &light_blue);
+
+    draw_end(app_win->canvas, &ps);
 }
 
 static void
@@ -54,9 +59,11 @@ appwindow_WM_NCCREATE(HWND hwnd, const CREATESTRUCT* cs)
         TRACE_ERR("malloc()");
         return FALSE;
     }
-
+    memset(app_win, 0, sizeof(AppWindow));
     SetWindowLongPtr(hwnd, 0, (LONG_PTR) app_win);
+
     app_win->hwnd = hwnd;
+    app_win->canvas = draw_create_hwnd_canvas(hwnd);
 
     appwindow_count++;
     return TRUE;
@@ -68,6 +75,9 @@ appwindow_WM_NCDESTROY(AppWindow* app_win)
     /* Windows send WM_NCDESTROY even when WM_NCCREATE fails. */
     if(app_win == NULL)
         return;
+
+    if(app_win->canvas != NULL)
+        draw_destroy_canvas(app_win->canvas);
 
     appwindow_count--;
     fe_free(app_win);
@@ -81,6 +91,14 @@ appwindow_WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     switch(msg) {
         case WM_PAINT:
             appwindow_WM_PAINT(app_win);
+            return 0;
+
+        case WM_ERASEBKGND:
+            return 0;
+
+        case WM_SIZE:
+            draw_resize_hwnd_canvas(app_win->canvas, wp, lp);
+            UpdateWindow(hwnd);
             return 0;
 
         case WM_CLOSE:
@@ -106,6 +124,7 @@ appwindow_init(void)
     WNDCLASSEX wc = { 0 };
 
     wc.cbSize = sizeof(wc);
+    wc.style = 0;
     wc.lpfnWndProc = appwindow_WndProc;
     wc.cbWndExtra = sizeof(AppWindow*);
     wc.hInstance = dll_feather;
