@@ -198,6 +198,8 @@ static inline void list_remove_tail(List* list)
         { list_remove(list, list->main.p); }
 
 
+/* Convenient macro for walking over complete list.
+ */
 #define LIST_FOR_EACH(list, node)  \
         for((node) = list_head((list)); (node) != list_end((list)); (node) = list_next((node)))
 
@@ -263,6 +265,12 @@ static inline void slist_remove_head(SList* list)
         { slist_remove(list, &list->main, list->main.n); }
 
 
+/* Convenient macro for walking over complete list.
+ */
+#define SLIST_FOR_EACH(list, node)  \
+        for((node) = slist_head((list)); (node) != slist_end((list)); (node) = slist_next((node)))
+
+
 /*****************************************************
  *** QList (queue or single-linked list with tail) ***
  *****************************************************/
@@ -325,6 +333,12 @@ static inline void qlist_remove(QList* list, QListNode* node_prev, QListNode* no
           if(list->tail == node) list->tail = node_prev; }
 static inline void qlist_remove_head(QList* list)
         { qlist_remove(list, &list->main, list->main.n); }
+
+
+/* Convenient macro for walking over complete list.
+ */
+#define QLIST_FOR_EACH(list, node)  \
+        for((node) = qlist_head((list)); (node) != qlist_end((list)); (node) = qlist_next((node)))
 
 
 #ifdef __cplusplus
