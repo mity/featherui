@@ -1,7 +1,7 @@
 
 # FeatherUI
 
-> ![WARNING]
+> [!WARNING]
 > Expect dragons and bugs. Tons of bugs. You have been warned.
 >
 > This is in very early stages of development and at the moment unusable for
