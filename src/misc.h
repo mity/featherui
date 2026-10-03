@@ -45,15 +45,15 @@
  * Noop in Release builds.
  */
 #ifdef DEBUG
-    void debug_trace__(const char* fmt, ...);
-    void debug_dump__(const char* msg, const void* addr, size_t size);
+    void debug_trace__(const char* fname, const char* funcname, unsigned line, const char* fmt, ...);
+    void debug_dump__(const char* fname, const char* funcname, unsigned line, const char* msg, const void* addr, size_t size);
 
-    #define TRACE(...)              debug_trace__(__VA_ARGS__)
-    #define TRACE_ERR_(fnname, err) debug_trace__("%hs failed. [%lu]", (fnname), (err))
-    #define TRACE_ERR(fnname)       debug_trace__("%hs failed. [%lu]", (fnname), GetLastError())
-    #define TRACE_HR_(fnname, hr)   debug_trace__("%hs failed. [0x%lx]", (fnname), (hr))
-    #define TRACE_HR(fnname)        debug_trace__("%hs failed. [0x%lx]", (fnname), hr)
-    #define DUMP(msg, addr, size)   debug_dump__((msg), (addr), (size))
+    #define TRACE(...)              debug_trace__(__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+    #define TRACE_ERR_(fnname, err) debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [%lu]", (fnname), (err))
+    #define TRACE_ERR(fnname)       debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [%lu]", (fnname), GetLastError())
+    #define TRACE_HR_(fnname, hr)   debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [0x%lx]", (fnname), (hr))
+    #define TRACE_HR(fnname)        debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [0x%lx]", (fnname), hr)
+    #define DUMP(msg, addr, size)   debug_dump__(__FILE__, __FUNCTION__, __LINE__, (msg), (addr), (size))
 #else
     #define TRACE(...)              do {} while(0)
     #define TRACE_ERR_(fnname, err) do {} while(0)

@@ -23,8 +23,24 @@ void (*fn_free_)(void*) = NULL;
 
 #ifdef DEBUG
 
+static const char*
+debug_basename__(const char* fname)
+{
+    const char* tmp;
+
+    tmp = strrchr(fname, '/');
+    if(tmp != NULL)
+        fname = tmp+1;
+
+    tmp = strrchr(fname, '\\');
+    if(tmp != NULL)
+        fname = tmp+1;
+
+    return fname;
+}
+
 void
-debug_trace__(const char* fmt, ...)
+debug_trace__(const char* fname, const char* funcname, unsigned line, const char* fmt, ...)
 {
     DWORD last_error;
     va_list args;
@@ -33,7 +49,9 @@ debug_trace__(const char* fmt, ...)
 
     last_error = GetLastError();
 
-    ptr += sprintf(ptr, "[%08x] ", (unsigned) GetCurrentThreadId());
+    fname = debug_basename__(fname);
+    ptr += sprintf(ptr, "[%08x] %s:%u (%s): ",
+            (unsigned) GetCurrentThreadId(), fname, line, funcname);
     va_start(args, fmt);
     ptr += vsprintf(ptr, fmt, args);
     va_end(args);
@@ -45,7 +63,7 @@ debug_trace__(const char* fmt, ...)
 }
 
 void
-debug_dump__(const char* msg, const void* addr, size_t size)
+debug_dump__(const char* fname, const char* funcname, unsigned line, const char* msg, const void* addr, size_t size)
 {
     static const size_t n_bytes_per_line = 16;
     static const size_t n_bytes_per_extra_space = 8;
@@ -56,7 +74,7 @@ debug_dump__(const char* msg, const void* addr, size_t size)
 
     last_error = GetLastError();
 
-    debug_trace__("%s", msg);
+    debug_trace__(fname, funcname, line, "%s", msg);
 
     while(off < size) {
         char buffer[512];
@@ -89,10 +107,10 @@ debug_dump__(const char* msg, const void* addr, size_t size)
             off++;
         }
 
-        debug_trace__("%s", buffer);
+        debug_trace__(fname, funcname, line, "%s", buffer);
     }
 
-    debug_trace__("            (%lu bytes)", (ULONG)size);
+    debug_trace__(fname, funcname, line, "            (%lu bytes)", (ULONG)size);
     SetLastError(last_error);
 }
 
