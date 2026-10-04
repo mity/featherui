@@ -55,7 +55,7 @@ HRESULT gfx_resize_canvas(GfxCanvas* canvas, UINT width, UINT height);
 HRESULT gfx_begin_draw(GfxCanvas* canvas, PAINTSTRUCT* ps);
 HRESULT gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps);
 
-/* Gfxing operations */
+/* Drawing operations */
 void gfx_clear(GfxCanvas* canvas, const GfxColor* c);
 
 /* This may be called when we suspect that this process won't need to do
