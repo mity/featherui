@@ -31,6 +31,46 @@
 #include "libex/list.h"
 
 
+/********************
+ *** Misc helpers ***
+ ********************/
+
+typedef enum D2dBitmapPurpose D2dBitmapPurpose;
+enum D2dBitmapPurpose {
+    D2D_BITMAP_BACKBUFFER = 0,  /* a back buffer for HWND canvas */
+    D2D_BITMAP_CANVAS = 1,      /* an in-memory canvas */
+    D2D_BITMAP_RESOURCE = 2     /* an immutable image resource */
+};
+
+static void
+d2d_setup_bitmap_properties(D2D1_BITMAP_PROPERTIES1* properties, D2dBitmapPurpose purpose)
+{
+    memset(properties, 0, sizeof(D2D1_BITMAP_PROPERTIES1));
+
+    properties->pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    properties->pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
+    properties->dpiX = 96.0;
+    properties->dpiY = 96.0;
+
+    switch(purpose) {
+        case D2D_BITMAP_BACKBUFFER:
+            properties->bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET |
+                                        D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
+            break;
+        case D2D_BITMAP_CANVAS:
+            properties->bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET;
+            break;
+        case D2D_BITMAP_RESOURCE:
+            properties->bitmapOptions = D2D1_BITMAP_OPTIONS_NONE;
+            break;
+    }
+}
+
+
+/********************
+ *** Global Stuff ***
+ ********************/
+
 typedef struct GlobalCtx GlobalCtx;
 struct GlobalCtx {
     ID3D11Device* d3d_device;
@@ -41,43 +81,65 @@ struct GlobalCtx {
     ID2D1Factory1* d2d_factory;
     ID2D1Device* d2d_device;
 
-    List win_ctx_list;  /* doubly-linked list of WindowCtx */
-    BOOL is_ready;
-    BOOL trim_supported;
+    List manager_list;
+    BOOL is_connected;
+    BOOL no_trim;
 };
-
-typedef struct WindowCtx WindowCtx;
-struct WindowCtx {
-    ID2D1DeviceContext* d2d_device_ctx;   /* Keep first! */
-    IDXGISwapChain1* dxgi_swapchain;
-    IDXGIDevice* dxgi_device;
-    ID2D1Bitmap1* d2d_bitmap;
-
-    HWND hwnd;
-    ListNode win_ctx_list_node;
-    BOOL is_ready;
-};
-
 
 static GlobalCtx global_ctx = { 0 };
 
-static const D2D1_BITMAP_PROPERTIES1 d2d_bmp_properties = {
-        .pixelFormat = {
-                .format = DXGI_FORMAT_B8G8R8A8_UNORM,
-                .alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED
-        },
-        .dpiX = 96.0,
-        .dpiY = 96.0,
-        .bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW
+
+/* Every abstraction which holds some device-dependent resources has to be
+ * a "manager". */
+typedef enum ManagerType ManagerType;
+enum ManagerType {
+    TYPE_HWND_CANVAS,
+    TYPE_MEM_CANVAS
 };
 
+typedef struct Manager Manager;
+struct Manager {
+    ManagerType type;
+    ListNode node;
+};
 
-/* Forward declarations. */
-static void global_ctx_close(void);
-static void window_ctx_close(WindowCtx* wc);
+static void
+manager_init(Manager* manager, ManagerType type)
+{
+    manager->type = type;
+    list_append(&global_ctx.manager_list, &manager->node);
+}
+
+static void
+manager_fini(Manager* manager)
+{
+    list_remove(&global_ctx.manager_list, &manager->node);
+}
+
+/* Forward declarations */
+typedef struct MemCanvas MemCanvas;
+typedef struct HwndCanvas HwndCanvas;
+static void mem_canvas_disconnect(MemCanvas* canvas);
+static void hwnd_canvas_disconnect(HwndCanvas* canvas);
+
+static void
+manager_reset(Manager* manager)
+{
+    switch(manager->type) {
+        /* Note: We just shut disconnect. Individual managers should be
+         * to re-connect on their own in a lazy fashion. */
+        case TYPE_MEM_CANVAS:   mem_canvas_disconnect((MemCanvas*) manager); break;
+        case TYPE_HWND_CANVAS:  hwnd_canvas_disconnect((HwndCanvas*) manager); break;
+        default:                UNREACHABLE();
+    }
+}
+
+
+/* Forward declaration */
+static void global_ctx_disconnect(void);
 
 static HRESULT
-global_ctx_open(void)
+global_ctx_connect(void)
 {
     static const D3D_FEATURE_LEVEL d3d_feature_levels[] =
             { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
@@ -89,50 +151,51 @@ global_ctx_open(void)
                 D3D11_CREATE_DEVICE_BGRA_SUPPORT, d3d_feature_levels,
                 SIZEOF_ARRAY(d3d_feature_levels), D3D11_SDK_VERSION,
                 &global_ctx.d3d_device, NULL, &global_ctx.d3d_device_ctx);
-    if(hr != S_OK) {
+    if(FAILED(hr)) {
         TRACE_HR("D3D11CreateDevice()");
         goto err;
     }
-    hr = ID3D11Device_QueryInterface(global_ctx.d3d_device, &IID_IDXGIDevice, (void**) &global_ctx.dxgi_device);
-    if(hr != S_OK) {
+    hr = ID3D11Device_QueryInterface(global_ctx.d3d_device, &IID_IDXGIDevice,
+                (void**) &global_ctx.dxgi_device);
+    if(FAILED(hr)) {
         TRACE_HR("ID3D11Device::QueryInterface()");
         goto err;
     }
     hr = IDXGIDevice_GetAdapter(global_ctx.dxgi_device, &global_ctx.dxgi_adapter);
-    if(hr != S_OK) {
+    if(FAILED(hr)) {
         TRACE_HR("IDXGIDevice::GetAdapter()");
         goto err;
     }
     hr = IDXGIAdapter_GetParent(global_ctx.dxgi_adapter, &IID_IDXGIFactory2, (void**) &global_ctx.dxgi_factory);
-    if(hr != S_OK) {
+    if(FAILED(hr)) {
         TRACE_HR("IDXGIAdapter::GetParent()");
         goto err;
     }
-    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED,
-                &IID_ID2D1Factory1, &d2d_factory_options, (void**) &global_ctx.d2d_factory);
-    if(hr != S_OK) {
+    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &IID_ID2D1Factory1, &d2d_factory_options,
+                (void**) &global_ctx.d2d_factory);
+    if(FAILED(hr)) {
         TRACE_HR("D2D1CreateFactory()");
         goto err;
     }
     hr = ID2D1Factory1_CreateDevice(global_ctx.d2d_factory, global_ctx.dxgi_device, &global_ctx.d2d_device);
-    if(hr != S_OK) {
+    if(FAILED(hr)) {
         TRACE_HR("ID2D1Factory1::CreateDevice()");
         goto err;
     }
 
     /* Success */
-    global_ctx.is_ready = TRUE;
+    global_ctx.is_connected = TRUE;
     return S_OK;
 
 err:
-    global_ctx_close();
+    global_ctx_disconnect();
     return hr;
 }
 
 static void
-global_ctx_close(void)
+global_ctx_disconnect(void)
 {
-    global_ctx.is_ready = FALSE;
+    global_ctx.is_connected = FALSE;
 
     if(global_ctx.d2d_device != NULL) {
         ID2D1Device_Release(global_ctx.d2d_device);
@@ -164,49 +227,134 @@ global_ctx_close(void)
     }
 }
 
+typedef struct MemCanvas MemCanvas;
+static void mem_canvas_disconnect(MemCanvas* manager);
+typedef struct HwndCanvas HwndCanvas;
+static void hwnd_canvas_disconnect(HwndCanvas* manager);
+
+
 static void
 global_reset(void)
 {
     ListNode* node;
 
-    LIST_FOR_EACH(&global_ctx.win_ctx_list, node) {
-        WindowCtx* win_ctx = LIST_DATA(node, WindowCtx, win_ctx_list_node);
-        window_ctx_close(win_ctx);
-    }
-    global_ctx_close();
+    LIST_FOR_EACH(&global_ctx.manager_list, node)
+        manager_reset(LIST_DATA(node, Manager, node));
 
-    /* In theory we might be using a different graphical card which now may
-     * support it, so reset the flag to try if needed.*/
-    global_ctx.trim_supported = TRUE;
+    global_ctx_disconnect();
 
-    /* Note all the discarded stuff should be restored lazily when needed. */
+    /* We might later reconnect to a different graphics card which might
+     * support Trim() even if the previous didn't, so lets reset the flag
+     * to (re)try. */
+    global_ctx.no_trim = FALSE;
 }
 
 
+/*********************
+ *** Memory Canvas ***
+ *********************/
+
+struct MemCanvas {
+    Manager manager;                    /* Keep 1st */
+    ID2D1DeviceContext* d2d_device_ctx; /* Keep 2nd */
+    ID2D1Bitmap1* d2d_bitmap;
+
+    D2D1_SIZE_U size;
+    BOOL is_connected;
+};
+
 static HRESULT
-window_ctx_open(WindowCtx* wc, HWND hwnd)
+mem_canvas_connect(MemCanvas* canvas)
+{
+    D2D1_BITMAP_PROPERTIES1 d2d_bmp_properties;
+    ID2D1Bitmap1* d2d_bitmap;
+    HRESULT hr = E_FAIL;
+
+    if(!global_ctx.is_connected) {
+        hr = global_ctx_connect();
+        if(hr != S_OK) {
+            TRACE_HR("global_ctx_connect");
+            goto err;
+        }
+    }
+
+    if(canvas->d2d_device_ctx == NULL) {
+        hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &canvas->d2d_device_ctx);
+        if(FAILED(hr)) {
+            TRACE_HR("ID2D1Device::CreateDeviceContext()");
+            goto err;
+        }
+    }
+
+    if(canvas->d2d_bitmap == NULL) {
+        d2d_setup_bitmap_properties(&d2d_bmp_properties, D2D_BITMAP_CANVAS);
+        hr = ID2D1DeviceContext_CreateBitmap1(canvas->d2d_device_ctx,
+                canvas->size, NULL, 0, &d2d_bmp_properties, &d2d_bitmap);
+        if(hr != S_OK) {
+            TRACE_HR("ID2D1DeviceContext::CreateBitmap()");
+            goto err;
+        }
+    }
+
+    return S_OK;
+
+err:
+    mem_canvas_disconnect(canvas);
+    return hr;
+}
+
+static void
+mem_canvas_disconnect(MemCanvas* canvas)
+{
+    canvas->is_connected = FALSE;
+
+    if(canvas->d2d_device_ctx != NULL) {
+        ID2D1DeviceContext_Release(canvas->d2d_device_ctx);
+        canvas->d2d_device_ctx = NULL;
+    }
+    if(canvas->d2d_bitmap != NULL) {
+        ID2D1Bitmap1_Release(canvas->d2d_bitmap);
+        canvas->d2d_bitmap = NULL;
+    }
+}
+
+
+/*******************
+ *** HWND Canvas ***
+ *******************/
+
+struct HwndCanvas {
+    Manager manager;                    /* Keep 1st */
+    ID2D1DeviceContext* d2d_device_ctx; /* Keep 2nd */
+    IDXGISwapChain1* dxgi_swapchain;
+    ID2D1Bitmap1* d2d_bitmap;
+
+    HWND hwnd;
+    BOOL is_connected;
+};
+
+static HRESULT
+hwnd_canvas_connect(HwndCanvas* canvas)
 {
     HRESULT hr = E_FAIL;
 
-    ASSERT(wc->hwnd == NULL  ||  wc->hwnd == hwnd);
-
     /* Check the global ctx is ready. It may not be, if there has been a reset
-     * of the graphical card. */
-    if(!global_ctx.is_ready) {
-        hr = global_ctx_open();
+     * of the graphics card. */
+    if(!global_ctx.is_connected) {
+        hr = global_ctx_connect();
         if(hr != S_OK) {
-            TRACE_HR("global_ctx_open");
+            TRACE_HR("global_ctx_connect");
             goto err;
         }
     }
 
     /* We may be semi-initialized in response to WM_RESIZE, hence check which
      * members are fine. */
-    if(wc->dxgi_swapchain == NULL) {
+    if(canvas->dxgi_swapchain == NULL) {
         DXGI_SWAP_CHAIN_DESC1 desc = { 0 };
         RECT client;
 
-        GetClientRect(hwnd, &client);
+        GetClientRect(canvas->hwnd, &client);
 
         desc.Width = rect_width(&client);
         desc.Height = rect_height(&client);
@@ -219,33 +367,36 @@ window_ctx_open(WindowCtx* wc, HWND hwnd)
         desc.Scaling = DXGI_SCALING_NONE;
 
         hr = IDXGIFactory2_CreateSwapChainForHwnd(global_ctx.dxgi_factory,
-                    (IUnknown*) global_ctx.d3d_device, hwnd, &desc,
-                    NULL, NULL, &wc->dxgi_swapchain);
+                    (IUnknown*) global_ctx.d3d_device, canvas->hwnd, &desc,
+                    NULL, NULL, &canvas->dxgi_swapchain);
         if(hr != S_OK) {
             TRACE_HR("IDXGIFactory2::CreateSwapChainForHwnd()");
             goto err;
         }
     }
 
-    if(wc->d2d_device_ctx == NULL) {
-        hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &wc->d2d_device_ctx);
+    if(canvas->d2d_device_ctx == NULL) {
+        hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &canvas->d2d_device_ctx);
         if(hr != S_OK) {
             TRACE_HR("ID2D1Device::CreateDeviceContext()");
             goto err;
         }
     }
 
-    if(wc->d2d_bitmap == NULL) {
+    if(canvas->d2d_bitmap == NULL) {
         IDXGISurface* dxgi_buffer;
+        D2D1_BITMAP_PROPERTIES1 d2d_bitmap_properties;
 
-        hr = IDXGISwapChain1_GetBuffer(wc->dxgi_swapchain, 0, &IID_IDXGISurface, (void**) &dxgi_buffer);
+        hr = IDXGISwapChain1_GetBuffer(canvas->dxgi_swapchain, 0,
+                    &IID_IDXGISurface, (void**) &dxgi_buffer);
         if(hr != S_OK) {
             TRACE_HR("IDXGISwapChain1::GetBuffer()");
             goto err;
         }
 
-        hr = ID2D1DeviceContext_CreateBitmapFromDxgiSurface(wc->d2d_device_ctx,
-                    dxgi_buffer, &d2d_bmp_properties, &wc->d2d_bitmap);
+        d2d_setup_bitmap_properties(&d2d_bitmap_properties, D2D_BITMAP_BACKBUFFER);
+        hr = ID2D1DeviceContext_CreateBitmapFromDxgiSurface(canvas->d2d_device_ctx, dxgi_buffer,
+                    &d2d_bitmap_properties, &canvas->d2d_bitmap);
         IDXGISurface_Release(dxgi_buffer);
         if(hr != S_OK) {
             TRACE_HR("ID2D1DeviceContext::CreateBitmapFromDxgiSurface()");
@@ -253,188 +404,257 @@ window_ctx_open(WindowCtx* wc, HWND hwnd)
         }
     }
 
-    ID2D1DeviceContext_SetTarget(wc->d2d_device_ctx, (void*) wc->d2d_bitmap);
+    ID2D1DeviceContext_SetTarget(canvas->d2d_device_ctx, (void*) canvas->d2d_bitmap);
 
     /* Success */
-    wc->hwnd = hwnd;
-    wc->is_ready = TRUE;
+    canvas->is_connected = TRUE;
     return S_OK;
 
 err:
-    window_ctx_close(wc);
+    hwnd_canvas_disconnect(canvas);
     return hr;
 }
 
 static void
-window_ctx_close(WindowCtx* wc)
+hwnd_canvas_disconnect(HwndCanvas* canvas)
 {
-    wc->is_ready = FALSE;
+    canvas->is_connected = FALSE;
 
-    if(wc->d2d_bitmap != NULL) {
-        ID2D1Bitmap1_Release(wc->d2d_bitmap);
-        wc->d2d_bitmap = NULL;
+    if(canvas->d2d_bitmap != NULL) {
+        ID2D1Bitmap1_Release(canvas->d2d_bitmap);
+        canvas->d2d_bitmap = NULL;
     }
-    if(wc->d2d_device_ctx != NULL) {
-        ID2D1DeviceContext_Release(wc->d2d_device_ctx);
-        wc->d2d_device_ctx = NULL;
+    if(canvas->d2d_device_ctx != NULL) {
+        ID2D1DeviceContext_Release(canvas->d2d_device_ctx);
+        canvas->d2d_device_ctx = NULL;
     }
-    if(wc->dxgi_device != NULL) {
-        IDXGIDevice_Release(wc->dxgi_device);
-        wc->dxgi_device = NULL;
-    }
-    if(wc->dxgi_swapchain != NULL) {
-        IDXGISwapChain1_Release(wc->dxgi_swapchain);
-        wc->dxgi_swapchain = NULL;
+    if(canvas->dxgi_swapchain != NULL) {
+        IDXGISwapChain1_Release(canvas->dxgi_swapchain);
+        canvas->dxgi_swapchain = NULL;
     }
 }
 
-/* This MUST be called in response to a resize of the window which owns
+/* This must be called in response to a resize of the window which owns
  * this context. */
-static HRESULT
-window_ctx_resize(WindowCtx* wc, UINT width, UINT height)
+static void
+hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
 {
     HRESULT hr = E_FAIL;
 
-    wc->is_ready = FALSE;
+    canvas->is_connected = FALSE;
 
-    if(wc->d2d_bitmap != NULL) {
-        ID2D1Bitmap1_Release(wc->d2d_bitmap);
-        wc->d2d_bitmap = NULL;
+    if(canvas->d2d_device_ctx != NULL)
+        ID2D1DeviceContext_SetTarget(canvas->d2d_device_ctx, NULL);
+
+    if(canvas->d2d_bitmap != NULL) {
+        ID2D1Bitmap1_Release(canvas->d2d_bitmap);
+        canvas->d2d_bitmap = NULL;
     }
 
-    if(wc->d2d_device_ctx != NULL)
-        ID2D1DeviceContext_SetTarget(wc->d2d_device_ctx, NULL);
-
-    if(wc->dxgi_swapchain != NULL) {
-        hr = IDXGISwapChain1_ResizeBuffers(wc->dxgi_swapchain, 0, width, height,
+    if(canvas->dxgi_swapchain != NULL) {
+        hr = IDXGISwapChain1_ResizeBuffers(canvas->dxgi_swapchain, 0, width, height,
                     DXGI_FORMAT_B8G8R8A8_UNORM, 0);
         if(hr != S_OK) {
-            /* Ouch, lets get to a well-defined state at least. */
+            /* Ouch, lets get to a well-defined state at least, and have it
+             * sorted in the next WM_PAINT. */
             TRACE_HR("IDXGISwapChain1::ResizeBuffers()");
-            window_ctx_close(wc);
-            return hr;
+            hwnd_canvas_disconnect(canvas);
         }
     }
 
-    /* Try to re-create the buffers immediately and not wait for lazy
-     * construction in WM_PAINT. */
-    window_ctx_open(wc, wc->hwnd);
-
-    /* Success */
-    return S_OK;
+    InvalidateRect(canvas->hwnd, NULL, FALSE);
 }
 
 
-// TODO: make this more universal with some union so that we could use it for
-//          paining to an in-memory bitmap.
+/*************************************
+ *** Public DrawCanvas abstraction ***
+ *************************************/
+
 struct DrawCanvas {
-    WindowCtx win_ctx;
+    union {
+        /* Every abstraction which wants to be compatible with our canvas
+         * drawing routines must begin with these members. */
+        struct {
+            Manager manager;
+            ID2D1DeviceContext* d2d_device_ctx;
+            BOOL is_connected;
+        };
+
+        HwndCanvas hwnd_canvas;
+    };
 };
 
+DrawCanvas*
+draw_create_mem_canvas(UINT width, UINT height)
+{
+    MemCanvas* canvas;
+    HRESULT hr;
+
+    canvas = (MemCanvas*) fe_malloc(sizeof(MemCanvas));
+    if(canvas == NULL)
+        return NULL;
+    memset(canvas, 0, sizeof(MemCanvas));
+
+    manager_init(&canvas->manager, TYPE_MEM_CANVAS);
+    canvas->size.width = width;
+    canvas->size.height = height;
+
+    hr = mem_canvas_connect(canvas);
+    if(hr != S_OK) {
+        TRACE_HR("mem_canvas_connect()");
+        /* Note we do not fail here, we just remain "disconnected" until
+         * draw_begin(). */
+    }
+
+    return (DrawCanvas*) canvas;
+}
 
 DrawCanvas*
 draw_create_hwnd_canvas(HWND hwnd)
 {
-    DrawCanvas* canvas;
+    HwndCanvas* canvas;
     HRESULT hr;
 
-    canvas = fe_malloc(sizeof(DrawCanvas));
+    canvas = (HwndCanvas*) fe_malloc(sizeof(HwndCanvas));
     if(canvas == NULL)
         return NULL;
-    memset(canvas, 0, sizeof(DrawCanvas));
+    memset(canvas, 0, sizeof(HwndCanvas));
 
-    hr = window_ctx_open(&canvas->win_ctx, hwnd);
+    manager_init(&canvas->manager, TYPE_HWND_CANVAS);
+    canvas->hwnd = hwnd;
+
+    hr = hwnd_canvas_connect(canvas);
     if(hr != S_OK) {
-        TRACE_HR("window_ctx_open()");
-        fe_free(canvas);
-        return NULL;
+        TRACE_HR("hwnd_canvas_connect()");
+        /* Note we do not fail here, we just remain "disconnected" until
+         * draw_begin(). */
     }
 
-    list_append(&global_ctx.win_ctx_list, &canvas->win_ctx.win_ctx_list_node);
-    return canvas;
+    return (DrawCanvas*) canvas;
+}
+
+HRESULT
+draw_resize_canvas(DrawCanvas* canvas, UINT width, UINT height)
+{
+    if(canvas->manager.type != TYPE_HWND_CANVAS) {
+        TRACE("draw_resize_canvas: Unsupported canvas type.");
+        return E_NOTIMPL;
+    }
+
+    hwnd_canvas_resize((HwndCanvas*) canvas, width, height);
+    return S_OK;
 }
 
 void
 draw_destroy_canvas(DrawCanvas* canvas)
 {
-    list_remove(&global_ctx.win_ctx_list, &canvas->win_ctx.win_ctx_list_node);
-    window_ctx_close(&canvas->win_ctx);
+    manager_fini(&canvas->manager);
+
+    switch(canvas->manager.type) {
+        case TYPE_HWND_CANVAS:  hwnd_canvas_disconnect((HwndCanvas*) canvas); break;
+        case TYPE_MEM_CANVAS:   mem_canvas_disconnect((MemCanvas*) canvas); break;
+        default:                UNREACHABLE();
+    }
+
     fe_free(canvas);
 }
 
-void
-draw_resize_hwnd_canvas(DrawCanvas* canvas, WPARAM wp, LPARAM lp)
-{
-    UINT width, height;
-
-    if(wp == SIZE_MAXHIDE  ||  wp == SIZE_MAXSHOW) {
-        /* Don't bother, it's not actually about _our_ size. */
-        return;
-    }
-
-    width = LOWORD(lp);
-    height = HIWORD(lp);
-
-    window_ctx_resize(&canvas->win_ctx, width, height);
-}
-
-BOOL
+HRESULT
 draw_begin(DrawCanvas* canvas, PAINTSTRUCT* ps)
 {
-    HRESULT hr;
-    // TODO: optimization: skip painting if the windows minimized or occluded
+    HRESULT hr = E_FAIL;
 
-    if(!canvas->win_ctx.is_ready) {
-        hr = window_ctx_open(&canvas->win_ctx, canvas->win_ctx.hwnd);
-        if(hr != S_OK) {
-            TRACE_HR("window_ctx_open()");
-            return FALSE;
+    switch(canvas->manager.type) {
+        case TYPE_MEM_CANVAS:
+        {
+            MemCanvas* mem_canvas = (MemCanvas*) canvas;
+            if(!mem_canvas->is_connected) {
+                hr = mem_canvas_connect(mem_canvas);
+                if(FAILED(hr)) {
+                    TRACE_HR("mem_canvas_connect()");
+                    return hr;
+                }
+            }
+            break;
         }
+
+        case TYPE_HWND_CANVAS:
+        {
+            HwndCanvas* hwnd_canvas = (HwndCanvas*) canvas;
+
+            if(!hwnd_canvas->is_connected) {
+                hr = hwnd_canvas_connect(hwnd_canvas);
+                if(FAILED(hr)) {
+                    TRACE_HR("hwnd_canvas_connect()");
+                    return hr;
+                }
+            }
+
+            BeginPaint(hwnd_canvas->hwnd, ps);
+            break;
+        }
+
+        default:
+            UNREACHABLE();
     }
 
-    BeginPaint(canvas->win_ctx.hwnd, ps);
-
-    ID2D1DeviceContext_BeginDraw(canvas->win_ctx.d2d_device_ctx);
-    return TRUE;
+    ID2D1DeviceContext_BeginDraw(canvas->d2d_device_ctx);
+    return S_OK;
 }
 
-void
+HRESULT
 draw_end(DrawCanvas* canvas, PAINTSTRUCT* ps)
 {
-    HRESULT hr;
+    HRESULT hr = E_FAIL;
     D2D1_TAG ignored;
 
-    hr = ID2D1DeviceContext_EndDraw(canvas->win_ctx.d2d_device_ctx, &ignored, &ignored);
-    if(hr != S_OK) {
-        TRACE_HR(ID2D1DeviceContext_EndDraw);
-        if( hr == D2DERR_RECREATE_TARGET ||
-            hr == DXGI_ERROR_DEVICE_RESET ||
-            hr == DXGI_ERROR_DEVICE_REMOVED )
-        {
-            TRACE("Reseting complete D2D machinery.");
-            global_reset();
-            EndPaint(canvas->win_ctx.hwnd, ps);
+    hr = ID2D1DeviceContext_EndDraw(canvas->d2d_device_ctx, &ignored, &ignored);
+    if(FAILED(hr))
+        TRACE_HR("ID2D1DeviceContext::EndDraw()");
 
-            /* Due the reset graphical hard reset, the contents is still invalid.
-             * FIXME: But perhaps we should do this with some short delay to
-             *        have a better chance and to avoid a busy loop?? */
-            InvalidateRect(canvas->win_ctx.hwnd, &ps->rcPaint, FALSE);
-            return;
+    if(canvas->manager.type == TYPE_HWND_CANVAS) {
+        HwndCanvas* hwnd_canvas = (HwndCanvas*) canvas;
+        if(SUCCEEDED(hr)) {
+            hr = IDXGISwapChain1_Present(hwnd_canvas->dxgi_swapchain, 1, 0);
+            if(FAILED(hr))
+                TRACE_HR("IDXGISwapChain1::Present()");
         }
+
+        EndPaint(hwnd_canvas->hwnd, ps);
     }
 
-    hr = IDXGISwapChain1_Present(canvas->win_ctx.dxgi_swapchain, 1, 0);
-    if(hr != S_OK)
-        TRACE_HR("IDXGISwapChain1::Present()");
+    switch(hr) {
+        case DXGI_ERROR_DEVICE_RESET:
+        case DXGI_ERROR_DEVICE_REMOVED:
+        case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+            TRACE("Reseting complete D2D machinery.");
+            global_reset();
+            break;
 
-    EndPaint(canvas->win_ctx.hwnd, ps);
+        case D2DERR_RECREATE_TARGET:
+            TRACE("Reseting canvas.");
+            manager_reset(&canvas->manager);
+            break;
+    }
+
+    return hr;
 }
+
+
+/*************************
+ *** Painting Routines ***
+ *************************/
 
 void
 draw_clear(DrawCanvas* canvas, const DrawColor* c)
 {
-    ID2D1DeviceContext_Clear(canvas->win_ctx.d2d_device_ctx, (const D2D_COLOR_F*) c);
+    ID2D1DeviceContext_Clear(canvas->d2d_device_ctx, (const D2D_COLOR_F*) c);
 }
+
+
+/*****************************
+ *** Public Misc Functions ***
+ *****************************/
 
 void
 draw_trim_gfx_mem(void)
@@ -442,16 +662,17 @@ draw_trim_gfx_mem(void)
     IDXGIDevice3* dxgi_device3;
     HRESULT hr;
 
-    if(!global_ctx.is_ready)
+    if(!global_ctx.is_connected)
         return;
 
-    if(!global_ctx.trim_supported)
+    if(global_ctx.no_trim)
         return;
 
     hr = IDXGIDevice_QueryInterface(global_ctx.dxgi_device,
                 &IID_IDXGIDevice3, (void**) &dxgi_device3);
     if(FAILED(hr)) {
         TRACE_HR("IDXGIDevice::QueryInterface(IID_IDXGIDevice3)");
+        global_ctx.no_trim = TRUE;
         return;
     }
 
@@ -460,20 +681,21 @@ draw_trim_gfx_mem(void)
 }
 
 
+/*****************************
+ *** Global Initialization ***
+ *****************************/
+
 HRESULT
 draw_init(void)
 {
     HRESULT hr;
 
-    list_init(&global_ctx.win_ctx_list);
+    memset(&global_ctx, 0, sizeof(GlobalCtx));
+    list_init(&global_ctx.manager_list);
 
-    /* By default assume it's supported. We reset to FALSE if-when we find
-     * otherwise. */
-    global_ctx.trim_supported = TRUE;
-
-    hr = global_ctx_open();
+    hr = global_ctx_connect();
     if(hr != S_OK)
-        TRACE_HR("global_ctx_open()");
+        TRACE_HR("global_ctx_connect()");
 
     return hr;
 }

@@ -52,13 +52,19 @@ appwindow_WM_PAINT(AppWindow* app_win)
 {
     static const DrawColor light_blue = { 0.9, 0.9, 1.0, 1.0 };
     PAINTSTRUCT ps;
+    HRESULT hr;
 
-    if(!draw_begin(app_win->canvas, &ps))
+    hr = draw_begin(app_win->canvas, &ps);
+    if(FAILED(hr))
+        TRACE_HR("draw_begin()");
+    if(hr != S_OK)
         return;
 
     draw_clear(app_win->canvas, &light_blue);
 
-    draw_end(app_win->canvas, &ps);
+    hr = draw_end(app_win->canvas, &ps);
+    if(FAILED(hr))
+        TRACE_HR("draw_begin()");
 }
 
 static void
@@ -121,8 +127,10 @@ appwindow_WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             return 0;
 
         case WM_SIZE:
-            draw_resize_hwnd_canvas(app_win->canvas, wp, lp);
-            UpdateWindow(hwnd);
+            if(wp == SIZE_RESTORED || wp == SIZE_MAXIMIZED) {
+                draw_resize_canvas(app_win->canvas, LOWORD(lp), HIWORD(lp));
+                UpdateWindow(hwnd);
+            }
             return 0;
 
         case WM_CLOSE:
