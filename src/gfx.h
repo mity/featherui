@@ -62,7 +62,7 @@ void gfx_clear(GfxCanvas* canvas, const GfxColor* c);
  * any Direct2D/3D in near future. It has no impact on the state of the
  * application, it's just courtesy to system/other processes as we release
  * currently held buffers allocated on the graphical card's memory. */
-void gfx_trim_gfx_mem(void);
+void gfx_trim_mem(void);
 
 /* Direct2D module initialization. */
 HRESULT gfx_init(void);

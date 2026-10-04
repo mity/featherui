@@ -659,7 +659,7 @@ gfx_clear(GfxCanvas* canvas, const GfxColor* c)
  *****************************/
 
 void
-gfx_trim_gfx_mem(void)
+gfx_trim_mem(void)
 {
     IDXGIDevice3* dxgi_device3;
     HRESULT hr;
