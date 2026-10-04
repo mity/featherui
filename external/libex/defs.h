@@ -208,11 +208,22 @@
  */
 #ifndef UNREACHABLE
     #if defined DEBUG  ||  defined ENABLE_ASSERTIONS
-        #define UNREACHABLE         ASSERT(0)
+        #define UNREACHABLE()       ASSERT(0)
+    #elif defined __GNUC__
+        #define UNREACHABLE()       __builtin_unreachable()
+    #elif defined __clang__
+        #define UNREACHABLE()       __builtin_unreachable()
+    #elif defined _MSC_VER  &&  _MSC_VER > 120
+        #define UNREACHABLE()       __assume(0)
     #elif defined __STDC_VERSION__  &&  __STDC_VERSION__ >= 202311
-        #define UNREACHABLE         unreachable()
+        /* Try this only as a fallback, because gcc says it supports 202311
+         * but it does not recognize this function.
+         * (At least within msys2/ucrt64 environment, might be an issue with
+         * headers).
+         */
+        #define UNREACHABLE()       unreachable()
     #else
-        #define UNREACHABLE         ASSERT(0)
+        #define UNREACHABLE()       do {} while(0)
     #endif
 #endif
 
