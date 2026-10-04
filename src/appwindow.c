@@ -26,7 +26,7 @@
 #include <feather/appwindow.h>
 #include "mainloop.h"
 #include "misc.h"
-#include "draw.h"
+#include "gfx.h"
 
 
 static const WCHAR appwindow_classname[] = L"feather::AppWindow";
@@ -36,7 +36,7 @@ static unsigned appwindow_count = 0;
 typedef struct AppWindow AppWindow;
 struct AppWindow {
     HWND hwnd;
-    DrawCanvas* canvas;
+    GfxCanvas* canvas;
 };
 
 
@@ -50,21 +50,21 @@ appwindow_get_count(void)
 static void
 appwindow_WM_PAINT(AppWindow* app_win)
 {
-    static const DrawColor light_blue = { 0.9, 0.9, 1.0, 1.0 };
+    static const GfxColor light_blue = { 0.9, 0.9, 1.0, 1.0 };
     PAINTSTRUCT ps;
     HRESULT hr;
 
-    hr = draw_begin(app_win->canvas, &ps);
+    hr = gfx_begin_draw(app_win->canvas, &ps);
     if(FAILED(hr))
-        TRACE_HR("draw_begin()");
+        TRACE_HR("gfx_begin()");
     if(hr != S_OK)
         return;
 
-    draw_clear(app_win->canvas, &light_blue);
+    gfx_clear(app_win->canvas, &light_blue);
 
-    hr = draw_end(app_win->canvas, &ps);
+    hr = gfx_end_draw(app_win->canvas, &ps);
     if(FAILED(hr))
-        TRACE_HR("draw_begin()");
+        TRACE_HR("gfx_begin()");
 }
 
 static void
@@ -93,7 +93,7 @@ appwindow_WM_NCCREATE(HWND hwnd, const CREATESTRUCT* cs)
     SetWindowLongPtr(hwnd, 0, (LONG_PTR) app_win);
 
     app_win->hwnd = hwnd;
-    app_win->canvas = draw_create_hwnd_canvas(hwnd);
+    app_win->canvas = gfx_create_hwnd_canvas(hwnd);
 
     appwindow_count++;
     return TRUE;
@@ -107,7 +107,7 @@ appwindow_WM_NCDESTROY(AppWindow* app_win)
         return;
 
     if(app_win->canvas != NULL)
-        draw_destroy_canvas(app_win->canvas);
+        gfx_destroy_canvas(app_win->canvas);
 
     appwindow_count--;
     fe_free(app_win);
@@ -128,7 +128,7 @@ appwindow_WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
         case WM_SIZE:
             if(wp == SIZE_RESTORED || wp == SIZE_MAXIMIZED) {
-                draw_resize_canvas(app_win->canvas, LOWORD(lp), HIWORD(lp));
+                gfx_resize_canvas(app_win->canvas, LOWORD(lp), HIWORD(lp));
                 UpdateWindow(hwnd);
             }
             return 0;

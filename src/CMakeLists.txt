@@ -8,7 +8,7 @@ set(SOURCES
     # *.c:          # *.h:                  # public *.h:
     # =========================================================================
     appwindow.c     appwindow.h             ../include/feather/appwindow.h
-    draw.c          draw.h draw_internal.h
+    gfx.c           gfx.h gfx_internal.h
     mainloop.c      mainloop.h
     misc.c          misc.h
     version.c                               ../include/feather/version.h

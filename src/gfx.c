@@ -23,10 +23,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "draw.h"
+#include "gfx.h"
 
-#define HELLO_FROM_DRAW_C
-#include "draw_internal.h"
+#define HELLO_FROM_GFX_C
+#include "gfx_internal.h"
 
 #include "libex/list.h"
 
@@ -467,13 +467,13 @@ hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
 
 
 /*************************************
- *** Public DrawCanvas abstraction ***
+ *** Public GfxCanvas abstraction ***
  *************************************/
 
-struct DrawCanvas {
+struct GfxCanvas {
     union {
         /* Every abstraction which wants to be compatible with our canvas
-         * drawing routines must begin with these members. */
+         * gfxing routines must begin with these members. */
         struct {
             Manager manager;
             ID2D1DeviceContext* d2d_device_ctx;
@@ -484,8 +484,8 @@ struct DrawCanvas {
     };
 };
 
-DrawCanvas*
-draw_create_mem_canvas(UINT width, UINT height)
+GfxCanvas*
+gfx_create_mem_canvas(UINT width, UINT height)
 {
     MemCanvas* canvas;
     HRESULT hr;
@@ -503,14 +503,14 @@ draw_create_mem_canvas(UINT width, UINT height)
     if(hr != S_OK) {
         TRACE_HR("mem_canvas_connect()");
         /* Note we do not fail here, we just remain "disconnected" until
-         * draw_begin(). */
+         * gfx_begin(). */
     }
 
-    return (DrawCanvas*) canvas;
+    return (GfxCanvas*) canvas;
 }
 
-DrawCanvas*
-draw_create_hwnd_canvas(HWND hwnd)
+GfxCanvas*
+gfx_create_hwnd_canvas(HWND hwnd)
 {
     HwndCanvas* canvas;
     HRESULT hr;
@@ -527,17 +527,17 @@ draw_create_hwnd_canvas(HWND hwnd)
     if(hr != S_OK) {
         TRACE_HR("hwnd_canvas_connect()");
         /* Note we do not fail here, we just remain "disconnected" until
-         * draw_begin(). */
+         * gfx_begin(). */
     }
 
-    return (DrawCanvas*) canvas;
+    return (GfxCanvas*) canvas;
 }
 
 HRESULT
-draw_resize_canvas(DrawCanvas* canvas, UINT width, UINT height)
+gfx_resize_canvas(GfxCanvas* canvas, UINT width, UINT height)
 {
     if(canvas->manager.type != TYPE_HWND_CANVAS) {
-        TRACE("draw_resize_canvas: Unsupported canvas type.");
+        TRACE("gfx_resize_canvas: Unsupported canvas type.");
         return E_NOTIMPL;
     }
 
@@ -546,7 +546,7 @@ draw_resize_canvas(DrawCanvas* canvas, UINT width, UINT height)
 }
 
 void
-draw_destroy_canvas(DrawCanvas* canvas)
+gfx_destroy_canvas(GfxCanvas* canvas)
 {
     manager_fini(&canvas->manager);
 
@@ -560,7 +560,7 @@ draw_destroy_canvas(DrawCanvas* canvas)
 }
 
 HRESULT
-draw_begin(DrawCanvas* canvas, PAINTSTRUCT* ps)
+gfx_begin_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
 {
     HRESULT hr = E_FAIL;
 
@@ -590,7 +590,8 @@ draw_begin(DrawCanvas* canvas, PAINTSTRUCT* ps)
                 }
             }
 
-            BeginPaint(hwnd_canvas->hwnd, ps);
+            if(ps != NULL)
+                BeginPaint(hwnd_canvas->hwnd, ps);
             break;
         }
 
@@ -603,7 +604,7 @@ draw_begin(DrawCanvas* canvas, PAINTSTRUCT* ps)
 }
 
 HRESULT
-draw_end(DrawCanvas* canvas, PAINTSTRUCT* ps)
+gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
 {
     HRESULT hr = E_FAIL;
     D2D1_TAG ignored;
@@ -620,7 +621,8 @@ draw_end(DrawCanvas* canvas, PAINTSTRUCT* ps)
                 TRACE_HR("IDXGISwapChain1::Present()");
         }
 
-        EndPaint(hwnd_canvas->hwnd, ps);
+        if(ps != NULL)
+            EndPaint(hwnd_canvas->hwnd, ps);
     }
 
     switch(hr) {
@@ -646,7 +648,7 @@ draw_end(DrawCanvas* canvas, PAINTSTRUCT* ps)
  *************************/
 
 void
-draw_clear(DrawCanvas* canvas, const DrawColor* c)
+gfx_clear(GfxCanvas* canvas, const GfxColor* c)
 {
     ID2D1DeviceContext_Clear(canvas->d2d_device_ctx, (const D2D_COLOR_F*) c);
 }
@@ -657,7 +659,7 @@ draw_clear(DrawCanvas* canvas, const DrawColor* c)
  *****************************/
 
 void
-draw_trim_gfx_mem(void)
+gfx_trim_gfx_mem(void)
 {
     IDXGIDevice3* dxgi_device3;
     HRESULT hr;
@@ -686,7 +688,7 @@ draw_trim_gfx_mem(void)
  *****************************/
 
 HRESULT
-draw_init(void)
+gfx_init(void)
 {
     HRESULT hr;
 
@@ -701,7 +703,7 @@ draw_init(void)
 }
 
 void
-draw_fini(void)
+gfx_fini(void)
 {
     global_reset();
 }

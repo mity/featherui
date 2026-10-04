@@ -29,7 +29,7 @@
 #include "project.h"
 /* The following ones are included just for their init/fini functions. */
 #include "appwindow.h"
-#include "draw.h"
+#include "gfx.h"
 
 
 HMODULE dll_feather = NULL;
@@ -274,7 +274,7 @@ static const struct {
 #endif
 
     /* Carefull here: The order matters, there may be module dependencies. */
-    MODULE(draw_init,       draw_fini),
+    MODULE(gfx_init,        gfx_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE

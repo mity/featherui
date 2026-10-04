@@ -23,8 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef FE_D2D_DWRITE_H
-#define FE_D2D_DWRITE_H
+#ifndef GFX_INTERNAL_H
+#define GFX_INTERNAL_H
 
 
 /* Hula loops for C-compatible Direct2D and DirectWrite interfaces.
@@ -35,7 +35,7 @@
  * [^1]: https://sourceforge.net/p/mingw-w64/bugs/1040/
  */
 
-#ifndef HELLO_FROM_DRAW_C
+#ifndef HELLO_FROM_GFX_C
     #error Hey, this is _my_ stuff. Use "draw.h" instead.
 #endif
 
@@ -68,4 +68,4 @@
 #endif
 
 
-#endif  /* FE_D2D_DWRITE_H */
+#endif  /* GFX_INTERNAL_H */
