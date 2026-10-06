@@ -66,6 +66,10 @@ d2d_setup_bitmap_properties(D2D1_BITMAP_PROPERTIES1* properties, D2dBitmapPurpos
     }
 }
 
+#define D2D_COLOR_INIT(gfx_color)                                           \
+        { gfx_color.r / 255.0, gfx_color.g / 255.0,                         \
+          gfx_color.b / 255.0, gfx_color.a / 255.0 }
+
 
 /********************
  *** Global Stuff ***
@@ -80,6 +84,8 @@ struct GlobalCtx {
     IDXGIDevice* dxgi_device;
     ID2D1Factory1* d2d_factory;
     ID2D1Device* d2d_device;
+    ID2D1DeviceContext* d2d_device_ctx;
+    ID2D1SolidColorBrush* d2d_solid_color_brush;
 
     List manager_list;
     BOOL is_connected;
@@ -145,6 +151,7 @@ global_ctx_connect(void)
             { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
     static const D2D1_FACTORY_OPTIONS d2d_factory_options =
             { D2D1_DEBUG_LEVEL_NONE };
+    static const D2D1_COLOR_F d2d_dummy_color = { 0.0, 0.0, 0.0, 0.0 };
     HRESULT hr;
 
     hr = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
@@ -182,6 +189,17 @@ global_ctx_connect(void)
         TRACE_HR("ID2D1Factory1::CreateDevice()");
         goto err;
     }
+    hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &global_ctx.d2d_device_ctx);
+    if(FAILED(hr)) {
+        TRACE_HR("ID2D1Device::CreateDeviceContext()");
+        goto err;
+    }
+    hr = ID2D1DeviceContext_CreateSolidColorBrush(global_ctx.d2d_device_ctx, &d2d_dummy_color, NULL,
+                &global_ctx.d2d_solid_color_brush);
+    if(FAILED(hr)) {
+        TRACE_HR("ID2D1DeviceContext::CreateSolidColorBrush()");
+        goto err;
+    }
 
     /* Success */
     global_ctx.is_connected = TRUE;
@@ -197,6 +215,14 @@ global_ctx_disconnect(void)
 {
     global_ctx.is_connected = FALSE;
 
+    if(global_ctx.d2d_solid_color_brush != NULL) {
+        ID2D1SolidColorBrush_Release(global_ctx.d2d_solid_color_brush);
+        global_ctx.d2d_solid_color_brush = NULL;
+    }
+    if(global_ctx.d2d_device_ctx != NULL) {
+        ID2D1DeviceContext_Release(global_ctx.d2d_device_ctx);
+        global_ctx.d2d_device_ctx = NULL;
+    }
     if(global_ctx.d2d_device != NULL) {
         ID2D1Device_Release(global_ctx.d2d_device);
         global_ctx.d2d_device = NULL;
@@ -648,9 +674,77 @@ gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
  *************************/
 
 void
-gfx_clear(GfxCanvas* canvas, const GfxColor* c)
+gfx_clear(GfxCanvas* canvas, GfxColor color)
 {
-    ID2D1DeviceContext_Clear(canvas->d2d_device_ctx, (const D2D_COLOR_F*) c);
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1DeviceContext_Clear(canvas->d2d_device_ctx, &d2d_color);
+}
+
+void
+gfx_draw_point(GfxCanvas* canvas, float x, float y, GfxColor color)
+{
+    D2D_RECT_F d2d_rect = { x - 0.5f, y - 0.5f, x + 0.5f, y + 0.5f };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_FillRectangle(canvas->d2d_device_ctx, &d2d_rect,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush);
+}
+
+void
+gfx_draw_line(GfxCanvas* canvas, float x0, float y0, float x1, float y1, GfxColor color)
+{
+    D2D_POINT_2F pt[2] = { { x0, y0 }, { x1, y1 } };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_DrawLine(canvas->d2d_device_ctx, pt[0], pt[1],
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush, 1.0f, NULL);
+}
+
+void
+gfx_draw_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, GfxColor color)
+{
+    D2D_RECT_F d2d_rect = { x0, y0, x1, y1 };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_DrawRectangle(canvas->d2d_device_ctx, &d2d_rect,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush, 1.0f, NULL);
+}
+
+void
+gfx_draw_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, float rx, float ry, GfxColor color)
+{
+    D2D1_ROUNDED_RECT d2d_rounded_rect = { { x0, y0, x1, y1 }, rx, ry };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_DrawRoundedRectangle(canvas->d2d_device_ctx, &d2d_rounded_rect,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush, 1.0f, NULL);
+}
+
+void
+gfx_fill_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, GfxColor color)
+{
+    D2D_RECT_F d2d_rect = { x0, y0, x1, y1 };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_FillRectangle(canvas->d2d_device_ctx, &d2d_rect,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush);
+}
+
+void
+gfx_fill_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, float rx, float ry, GfxColor color)
+{
+    D2D1_ROUNDED_RECT d2d_rounded_rect = { { x0, y0, x1, y1 }, rx, ry };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_FillRoundedRectangle(canvas->d2d_device_ctx, &d2d_rounded_rect,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush);
 }
 
 

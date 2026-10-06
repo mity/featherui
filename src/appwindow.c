@@ -24,8 +24,9 @@
  */
 
 #include <feather/appwindow.h>
-#include "mainloop.h"
+
 #include "misc.h"
+#include "mainloop.h"
 #include "gfx.h"
 
 
@@ -50,7 +51,6 @@ appwindow_get_count(void)
 static void
 appwindow_WM_PAINT(AppWindow* app_win)
 {
-    static const GfxColor light_blue = { 0.9, 0.9, 1.0, 1.0 };
     PAINTSTRUCT ps;
     HRESULT hr;
 
@@ -60,7 +60,12 @@ appwindow_WM_PAINT(AppWindow* app_win)
     if(hr != S_OK)
         return;
 
-    gfx_clear(app_win->canvas, &light_blue);
+    gfx_clear(app_win->canvas, gfx_rgb(223, 223, 255));
+    gfx_draw_line(app_win->canvas, 10.0f, 10.5f, 100.0f, 10.5f, gfx_rgb(0, 0, 0));
+    gfx_draw_rect(app_win->canvas, 10.5f, 20.5f, 99.5f, 29.5f, gfx_rgb(0, 0, 0));
+    gfx_fill_rect(app_win->canvas, 10.0f, 40.0f, 100.0f, 50.0f, gfx_rgb(0, 0, 0));
+    gfx_fill_rounded_rect(app_win->canvas, 10.0f, 60.0f, 100.0f, 100.0f, 4.0f, 4.0f, gfx_rgb(0, 0, 0));
+    gfx_fill_rounded_rect(app_win->canvas, 10.0f, 110.0f, 100.0f, 150.0f, 8.0f, 8.0f, gfx_rgb(0, 0, 0));
 
     hr = gfx_end_draw(app_win->canvas, &ps);
     if(FAILED(hr))
