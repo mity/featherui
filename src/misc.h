@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <malloc.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,6 +40,7 @@
 #include <feather/_internal.h>
 
 #include "libex/defs.h"
+#include "libex/malloca.h"
 
 
 /* Helper debug logging via DebugOutputString().

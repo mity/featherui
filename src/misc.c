@@ -155,6 +155,36 @@ debug_dump__(const char* fname, const char* funcname, unsigned line, const char*
 #ifdef DEBUG
 
 static void
+detect_preferred_languages(bool system)
+{
+    WCHAR* buffer;
+    WCHAR* ptr;
+    ULONG buffer_size;
+    ULONG n_languages;
+    ULONG i;
+
+    if(system)
+        GetSystemPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, NULL, &buffer_size);
+    else
+        GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, NULL, &buffer_size);
+
+    buffer = (WCHAR*) MALLOCA(buffer_size * sizeof(WCHAR));
+
+    if(system)
+        GetSystemPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
+    else
+        GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
+
+    ptr = buffer;
+    for(i = 0; i < n_languages; i++) {
+        TRACE("%s preferred language #%u: %S", (system ? "System" : "User"), i+1, ptr);
+        ptr += wcslen(ptr) + 1;
+    }
+
+    FREEA(buffer);
+}
+
+static void
 detect_sys_info(void)
 {
     static const struct {
@@ -251,6 +281,10 @@ err_GetProcAddress_RtlGetVersion:
 
     if(is_wow64)
         TRACE("Detected we're running as a Wow64 process.");
+
+    /* (4) System and user locale information. */
+    detect_preferred_languages(true);
+    detect_preferred_languages(false);
 }
 
 #endif  /* DEBUG */

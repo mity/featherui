@@ -1,4 +1,4 @@
-Project: libex
+Project: libex (subset)
 URL: https://github.com/mity/libex
 License: MIT
 Copyright: Martin Mitáš
