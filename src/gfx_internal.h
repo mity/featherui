@@ -32,7 +32,7 @@
  */
 
 #ifndef HELLO_FROM_GFX_C
-    #error Hey, this is _my_ stuff. Use "draw.h" instead.
+    #error Hey, this is _my_ stuff. Use "gfx.h" instead.
 #endif
 
 #include <dxgi.h>
