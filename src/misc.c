@@ -67,6 +67,8 @@ detect_preferred_languages(bool system)
     else
         GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
 
+    XDUMP(buffer, buffer_size);
+
     ptr = buffer;
     for(i = 0; i < n_languages; i++) {
         XTRACE_ALWAYS("%s preferred language #%u: %ls", (system ? "System" : "User"), i+1, ptr);
