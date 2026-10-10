@@ -11,6 +11,7 @@ set(SOURCES
     gfx.c           gfx.h gfx_internal.h
     mainloop.c      mainloop.h
     misc.c          misc.h
+    misc_alloc.c
     version.c                               ../include/feather/version.h
     xtrace.c        xtrace.h
                                             ../include/feather.h
@@ -48,6 +49,11 @@ add_definitions(-DCOBJMACROS)
 
 if(FEATHER_BUILD_DLL)
     add_library(feather SHARED ${DLL_SOURCES})
+    target_compile_definitions(feather PRIVATE
+            -DMALLOC_FUNC=fe_malloc
+            -DREALLOC_FUNC=fe_realloc
+            -DFREE_FUNC=fe_free
+    )
     target_compile_definitions(feather PRIVATE -DFEATHER_BUILD_DLL)
     target_link_libraries(feather PRIVATE ${LIBS})
     target_include_directories(feather PUBLIC ${PUBLIC_INCDIRS} PRIVATE ${PRIVATE_INCDIRS})
@@ -56,9 +62,13 @@ endif()
 
 if(FEATHER_BUILD_STATIC)
     add_library(feather_static STATIC ${STATIC_SOURCES})
+    target_compile_definitions(feather_static PRIVATE
+            -DMALLOC_FUNC=fe_malloc
+            -DREALLOC_FUNC=fe_realloc
+            -DFREE_FUNC=fe_free
+    )
     target_compile_definitions(feather_static PRIVATE -DFEATHER_BUILD_STATIC)
     target_link_libraries(feather_static PUBLIC ${LIBS})
-    target_include_directories(feather_static PUBLIC ${PUBLIC_INCDIRS} PRIVATE ${PRIVATE_INCDIRS}
-    )
+    target_include_directories(feather_static PUBLIC ${PUBLIC_INCDIRS} PRIVATE ${PRIVATE_INCDIRS})
     add_library(featherui_static ALIAS feather_static)
 endif()

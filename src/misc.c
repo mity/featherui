@@ -32,10 +32,6 @@ HMODULE dll_feather = NULL;
 HMODULE dll_kernel32 = NULL;
 HMODULE dll_ntdll = NULL;
 
-void* (*fn_malloc_)(size_t) = NULL;
-void* (*fn_realloc_)(void*, size_t) = NULL;
-void (*fn_free_)(void*) = NULL;
-
 
 /*********************************
  *** Detect System Information ***
@@ -70,8 +66,6 @@ detect_preferred_languages(bool system)
         GetSystemPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
     else
         GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
-
-    XDUMP(buffer, buffer_size);
 
     ptr = buffer;
     for(i = 0; i < n_languages; i++) {
@@ -267,6 +261,10 @@ DllMain(HINSTANCE hInstance, DWORD reason, void* reserved)
  *** Public Interface ***
  ************************/
 
+/* Forward declaration.
+ * This lives in misc_alloc.c but it's just for our use here. */
+void fe_set_allocator(const FeAllocator* allocator);
+
 HRESULT FEATHER_API
 feInitialize(const FeAllocator* allocator, DWORD dwFlags)
 {
@@ -277,6 +275,18 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
     UNUSED(dwFlags);
 
     trace_hr_once();
+
+    if(allocator != NULL) {
+        if(allocator->fnMalloc == NULL  ||
+           allocator->fnRealloc == NULL  ||
+           allocator->fnFree == NULL)
+        {
+            XTRACE_E("Invalid custom allocator.");
+            return E_INVALIDARG;
+        }
+    }
+
+    fe_set_allocator(allocator);
 
     XTRACE_ALWAYS("FeatherUI version %u.%u.%u (%u-bit)",
             PROJECT_MAJOR_VERSION, PROJECT_MINOR_VERSION, PROJECT_PATCH_VERSION,
@@ -294,16 +304,6 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
     if(allocator != NULL  &&  allocator->cbSize != sizeof(FeAllocator)) {
         XTRACE_E("initialize: invalid FeAllocator::cbSize.");
         return E_INVALIDARG;
-    }
-
-    if(allocator != NULL) {
-        fn_malloc_ = allocator->fnMalloc;
-        fn_realloc_ = allocator->fnRealloc;
-        fn_free_ = allocator->fnFree;
-    } else {
-        fn_malloc_ = NULL;
-        fn_realloc_ = NULL;
-        fn_free_ = NULL;
     }
 
     if(!GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |

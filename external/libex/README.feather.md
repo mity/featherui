@@ -2,4 +2,4 @@ Project: libex (subset)
 URL: https://github.com/mity/libex
 License: MIT
 Copyright: Martin Mitáš
-Upstream version: 9b493c04d61bf02d32347d528f6729147f764f1e
+Upstream version: 664286c21f956c383448a1ed40df46081363f3f3

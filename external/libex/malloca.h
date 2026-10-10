@@ -68,6 +68,18 @@ extern "C" {
 #endif
 
 
+static inline void*
+malloca_set_mark__(void* ptr, int mark)
+{
+    if(ptr != NULL) {
+        int* x = (int*)ptr;
+        *x = mark;
+        ptr = (void*)((char*)ptr + sizeof(void*));
+    }
+    return ptr;
+}
+
+
 /* Allocate block of memory via malloc() or alloca(), depending on the
  * requested amount of memory.
  *
@@ -78,45 +90,25 @@ extern "C" {
  * Returns pointer to the memory block or NULL on failure. When not needed
  * anymore, release it with FREEA().
  */
-static inline void*
-MALLOCA_(size_t size, size_t threshold)
-{
-    void* ptr;
+#define MALLOCA_(size, threshold)                                             \
+    ((size) < (threshold) - sizeof(void*)                                     \
+        ? malloca_set_mark__(EX_func_alloca__(size + sizeof(void*)), 0xcccc)  \
+        : malloca_set_mark__(EX_func_malloc__(size + sizeof(void*)), 0xdddd))
 
-    if(size <= threshold) {
-        ptr = EX_func_alloca__(size + sizeof(void*));
-        *((unsigned*)ptr) = 0xcccc;
-    } else {
-        ptr = EX_func_malloc__(size + sizeof(void*));
-        if(ptr == NULL)
-            return NULL;
-        *((unsigned*)ptr) = 0xdddd;
-    }
-
-    /* Advanced after the mark. Also advance for a size of pointer, to
-     * preserve the natural alignment. */
-    ptr = (void*)((char*)ptr + sizeof(void*));
-    return ptr;
-}
-
-static inline void*
-MALLOCA(size_t size)
-{
-    return MALLOCA_(size, MALLOCA_THRESHOLD);
-}
+#define MALLOCA(size)       MALLOCA_((size), MALLOCA_THRESHOLD)
 
 /* Release any memory allocated with MALLOCA() or MALLOCA_().
  */
-static inline void
-FREEA(void* ptr)
-{
-    if((ptr) == NULL)
-        return;
-
-    ptr = ((char*) ptr) - sizeof(void*);
-    if(*(unsigned*)ptr == 0xdddd)
-        EX_func_free__(ptr);
-}
+/* Release any memory allocated with MALLOCA() or MALLOCA_().
+ */
+#define FREEA(ptr)                                                            \
+    do {                                                                      \
+        if((ptr) != NULL) {                                                   \
+            int* x = (int*)((char*)(ptr) - sizeof(void*));                    \
+            if(*x == 0xdddd)                                                  \
+                EX_func_free__(x);                                            \
+        }                                                                     \
+    } while(0)
 
 
 #ifdef __cplusplus

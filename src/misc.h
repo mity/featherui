@@ -89,47 +89,10 @@ rect_height(const RECT* rect)
  *** Custom Allocator Support ***
  ********************************/
 
-extern void* (*fn_malloc_)(size_t);
-extern void* (*fn_realloc_)(void*, size_t);
-extern void (*fn_free_)(void*);
+void* fe_malloc(size_t size);
+void* fe_realloc(void* ptr, size_t size);
+void fe_free(void* ptr);
 
-INLINE void*
-fe_malloc(size_t size)
-{
-    void* mem;
-
-    /* In the (most common) case with the defaults, do a direct call as it's
-     * on modern CPUs cheaper. */
-    mem = (fn_malloc_ == NULL) ? malloc(size) : fn_malloc_(size);
-    if(mem == NULL)
-        XTRACE_E("malloc() failed.");
-    return mem;
-}
-
-INLINE void*
-fe_realloc(void* mem, size_t size)
-{
-    /* Ditto. */
-    mem = (fn_realloc_ == NULL) ? realloc(mem, size) : fn_realloc_(mem, size);
-    if(mem == NULL)
-        XTRACE_E("realloc() failed.");
-    return mem;
-}
-
-INLINE void
-fe_free(void* ptr)
-{
-    /* Ditto. */
-    (fn_free_ == NULL) ? free(ptr) : fn_free_(ptr);
-}
-
-/* Make sure we don't accidentally use the plain malloc/realloc/free, as
- * and mix-up of the standard libc allocator and app-provided allocator might
- * be hard to debug.
- *
- * We also don't "#define malloc fe_malloc", as (a) there's a little bit logic
- * and (b) caller should be aware of it.
- */
 #define malloc      DONT_USE_standard_malloc___INSTEAD_USE_fe_malloc
 #define realloc     DONT_USE_standard_realloc___INSTEAD_USE_fe_realloc
 #define free        DONT_USE_standard_free___INSTEAD_USE_fe_free
