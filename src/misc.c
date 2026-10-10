@@ -37,106 +37,6 @@ void* (*fn_realloc_)(void*, size_t) = NULL;
 void (*fn_free_)(void*) = NULL;
 
 
-/*****************************************
- *** Debug Output via OutDebugString() ***
- *****************************************/
-
-#ifdef DEBUG
-
-static const char*
-debug_basename__(const char* fname)
-{
-    const char* tmp;
-
-    tmp = strrchr(fname, '/');
-    if(tmp != NULL)
-        fname = tmp+1;
-
-    tmp = strrchr(fname, '\\');
-    if(tmp != NULL)
-        fname = tmp+1;
-
-    return fname;
-}
-
-void
-debug_trace__(const char* fname, const char* funcname, unsigned line, const char* fmt, ...)
-{
-    DWORD last_error;
-    va_list args;
-    char buffer[512];
-    char* ptr = buffer;
-
-    last_error = GetLastError();
-
-    fname = debug_basename__(fname);
-    ptr += sprintf(ptr, "[%08x] %s:%u (%s): ",
-            (unsigned) GetCurrentThreadId(), fname, line, funcname);
-    va_start(args, fmt);
-    ptr += vsprintf(ptr, fmt, args);
-    va_end(args);
-    *ptr++ = '\n';
-    *ptr++ = '\0';
-    OutputDebugStringA(buffer);
-
-    SetLastError(last_error);
-}
-
-void
-debug_dump__(const char* fname, const char* funcname, unsigned line, const char* msg, const void* addr, size_t size)
-{
-    static const size_t n_bytes_per_line = 16;
-    static const size_t n_bytes_per_extra_space = 8;
-
-    DWORD last_error;
-    const BYTE* bytes = (const BYTE*) addr;
-    size_t off = 0;
-
-    last_error = GetLastError();
-
-    debug_trace__(fname, funcname, line, "%s", msg);
-
-    while(off < size) {
-        char buffer[512];
-        char* ptr = buffer;
-        size_t line_off = off;
-
-        ptr += sprintf(ptr, "    %04lx:  ", (ULONG) off);
-
-        /* Hex output */
-        while(off - line_off < n_bytes_per_line) {
-            if(off < size)
-                ptr += sprintf(ptr, " %02x", bytes[off]);
-            else
-                ptr += sprintf(ptr, "   ");
-            if(off % n_bytes_per_extra_space == 0)
-                ptr += sprintf(ptr, "  ");
-            off++;
-        }
-
-        off = line_off;
-        ptr += sprintf(ptr, "   | ");
-
-        /* Char output */
-        while(off - line_off < n_bytes_per_line) {
-            if(off < size)
-                ptr += sprintf(ptr, "%c",
-                        (iscntrl(bytes[off]) || (uint8_t)bytes[off] >= 0x80 ? '.' : bytes[off]));
-            else
-                break;
-            off++;
-        }
-
-        debug_trace__(fname, funcname, line, "%s", buffer);
-    }
-
-    debug_trace__(fname, funcname, line, "            (%lu bytes)", (ULONG)size);
-    SetLastError(last_error);
-}
-
-#endif  /* DEBUG */
-
-
 /*********************************
  *** Detect System Information ***
  *********************************/
@@ -171,9 +71,11 @@ detect_preferred_languages(bool system)
     else
         GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &n_languages, buffer, &buffer_size);
 
+    XDUMP(buffer, buffer_size);
+
     ptr = buffer;
     for(i = 0; i < n_languages; i++) {
-        TRACE("%s preferred language #%u: %S", (system ? "System" : "User"), i+1, ptr);
+        XTRACE_ALWAYS("%s preferred language #%u: %ls", (system ? "System" : "User"), i+1, ptr);
         ptr += wcslen(ptr) + 1;
     }
 
@@ -229,14 +131,14 @@ detect_sys_info(void)
     fn_RtlGetVersion = (LONG (WINAPI *)(RTL_OSVERSIONINFOW*))
             GetProcAddress(dll_ntdll, "RtlGetVersion");
     if(fn_RtlGetVersion == NULL) {
-        TRACE_ERR("GetProcAddress(ntdll.dll, RtlGetVersion)");
+        XTRACE_ERR("GetProcAddress(ntdll.dll, RtlGetVersion)");
         goto err_GetProcAddress_RtlGetVersion;
     }
 
     os_ver.dwOSVersionInfoSize = sizeof(os_ver);
     err = fn_RtlGetVersion(&os_ver);
     if(err != 0) {
-        TRACE_ERR_("RtlGetVersion()", err);
+        XTRACE_ERR_(err, "RtlGetVersion()");
         goto err_RtlGetVersion;
     }
 
@@ -251,9 +153,9 @@ detect_sys_info(void)
 
 err_RtlGetVersion:
 err_GetProcAddress_RtlGetVersion:
-    TRACE("Detected OS version: %s%s%S (%u.%u build %u)",
-          os_ver_str, os_ver.szCSDVersion[0] ? " " : "", os_ver.szCSDVersion,
-          os_ver.dwMajorVersion, os_ver.dwMinorVersion, os_ver.dwBuildNumber);
+    XTRACE_ALWAYS("Detected OS version: %s%s%S (%u.%u build %u)",
+            os_ver_str, os_ver.szCSDVersion[0] ? " " : "", os_ver.szCSDVersion,
+            os_ver.dwMajorVersion, os_ver.dwMinorVersion, os_ver.dwBuildNumber);
 
     /* (2) Detect native architecture. */
     GetNativeSystemInfo(&sys_info);
@@ -265,18 +167,18 @@ err_GetProcAddress_RtlGetVersion:
             break;
         }
     }
-    TRACE("Detected architecture: %s", sys_arch_str);
+    XTRACE_ALWAYS("Detected architecture: %s", sys_arch_str);
 
     /* (3) Determine whether we're WOW64 process via IsWow64Process2(). */
     fn_IsWow64Process = (BOOL (WINAPI*)(HANDLE, BOOL*))
             GetProcAddress(dll_kernel32, "IsWow64Process");
     if(!fn_IsWow64Process(GetCurrentProcess(), &is_wow64)) {
-        TRACE_ERR("IsWow64Process2()");
+        XTRACE_ERR("IsWow64Process2()");
         is_wow64 = FALSE;
     }
 
     if(is_wow64)
-        TRACE("Detected we're running as a Wow64 process.");
+        XTRACE_ALWAYS("Detected we're running as a Wow64 process.");
 
     /* (4) System and user locale information. */
     detect_preferred_languages(true);
@@ -324,13 +226,15 @@ feTerminate_impl(int count)
 static void
 trace_hr_once(void)
 {
-    static BOOL was_here = FALSE;
+#ifdef DEBUG
+    static INIT_ONCE once = INIT_ONCE_STATIC_INIT;
+    BOOL pending;
 
-    if(was_here)
+    if(!InitOnceBeginInitialize(&once, 0, &pending, NULL))
         return;
-
-    TRACE("========================================================");
-    was_here = TRUE;
+    XTRACE_ALWAYS("========================================================");
+    InitOnceComplete(&once, 0, NULL);
+#endif
 }
 
 BOOL CALLBACK
@@ -342,16 +246,16 @@ DllMain(HINSTANCE hInstance, DWORD reason, void* reserved)
         case DLL_PROCESS_ATTACH:
             trace_hr_once();
             if(reserved != NULL)
-                TRACE("FeatherUI loading (process startup)");
+                XTRACE_ALWAYS("FeatherUI loading (process startup)");
             else
-                TRACE("FeatherUI loading (LoadLibrary())");
+                XTRACE_ALWAYS("FeatherUI loading (LoadLibrary())");
             break;
 
         case DLL_PROCESS_DETACH:
             if(reserved != NULL)
-                TRACE("FeatherUI unloading (process termination)");
+                XTRACE_ALWAYS("FeatherUI unloading (process termination)");
             else
-                TRACE("FeatherUI unloading (FreeLibrary())");
+                XTRACE_ALWAYS("FeatherUI unloading (FreeLibrary())");
             break;
     }
 
@@ -374,21 +278,21 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
 
     trace_hr_once();
 
-    TRACE("FeatherUI version %u.%u.%u (%u-bit)",
-          PROJECT_MAJOR_VERSION, PROJECT_MINOR_VERSION, PROJECT_PATCH_VERSION,
-          CHAR_BIT * sizeof(void*)
+    XTRACE_ALWAYS("FeatherUI version %u.%u.%u (%u-bit)",
+            PROJECT_MAJOR_VERSION, PROJECT_MINOR_VERSION, PROJECT_PATCH_VERSION,
+            CHAR_BIT * sizeof(void*)
     );
 
 #ifdef FEATHER_BUILD_DLL
-    TRACE("(built as DLL)");
+    XTRACE_ALWAYS("(built as DLL)");
 #endif
 
 #ifdef FEATHER_BUILD_STATIC
-    TRACE("(built as a static lib)");
+    XTRACE_ALWAYS("(built as a static lib)");
 #endif
 
     if(allocator != NULL  &&  allocator->cbSize != sizeof(FeAllocator)) {
-        TRACE("initialize: invalid FeAllocator::cbSize.");
+        XTRACE_E("initialize: invalid FeAllocator::cbSize.");
         return E_INVALIDARG;
     }
 
@@ -406,7 +310,7 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
                 GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                 (const WCHAR*) feInitialize, &dll_self))
     {
-        TRACE_ERR("GetModuleHandleEx()");
+        XTRACE_ERR("GetModuleHandleEx()");
         return HRESULT_FROM_WIN32(GetLastError());
     }
 
@@ -423,7 +327,7 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
     for(i = 0; i < (int) SIZEOF_ARRAY(module_map); i++) {
         hr = module_map[i].func_init();
         if(hr != S_OK) {
-            TRACE_HR(module_map[i].func_init_str);
+            XTRACE_HR(module_map[i].func_init_str);
             /* Undo what we've already done. */
             feTerminate_impl(i);
             return hr;

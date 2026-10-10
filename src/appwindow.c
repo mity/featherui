@@ -52,7 +52,7 @@ appwindow_WM_PAINT(AppWindow* app_win)
 
     hr = gfx_begin_draw(app_win->canvas, &ps);
     if(FAILED(hr))
-        TRACE_HR("gfx_begin()");
+        XTRACE_HR("gfx_begin()");
     if(hr != S_OK)
         return;
 
@@ -65,7 +65,7 @@ appwindow_WM_PAINT(AppWindow* app_win)
 
     hr = gfx_end_draw(app_win->canvas, &ps);
     if(FAILED(hr))
-        TRACE_HR("gfx_begin()");
+        XTRACE_HR("gfx_begin()");
 }
 
 static void
@@ -86,8 +86,8 @@ appwindow_WM_NCCREATE(HWND hwnd, const CREATESTRUCT* cs)
 
     app_win = (AppWindow*) fe_malloc(sizeof(AppWindow));
     if(app_win == NULL) {
+        XTRACE_E("malloc()");
         SetLastError(ERROR_OUTOFMEMORY);
-        TRACE_ERR("malloc()");
         return FALSE;
     }
     memset(app_win, 0, sizeof(AppWindow));
@@ -166,7 +166,7 @@ appwindow_init(void)
     wc.lpszClassName = appwindow_classname;
 
     if(!RegisterClassEx(&wc)) {
-        TRACE_ERR("RegisterClassEx()");
+        XTRACE_ERR("RegisterClassEx()");
         return HRESULT_FROM_WIN32(GetLastError());
     }
 
@@ -194,7 +194,7 @@ feAppWindow_Create(HWND* pHwnd)
                     CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL,
                     dll_feather, 0);
     if(hwnd == NULL) {
-        TRACE_ERR("CreateWindowEx()");
+        XTRACE_ERR("CreateWindowEx()");
         return HRESULT_FROM_WIN32(GetLastError());
     }
 

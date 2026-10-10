@@ -54,7 +54,7 @@ feRun(int* piExitCode)
     int exit_code = EXIT_FAILURE;
 
     if(appwindow_get_count() == 0) {
-        TRACE("feRun: No application window.");
+        XTRACE_E("feRun: No application window.");
         return E_FAIL;
     }
 

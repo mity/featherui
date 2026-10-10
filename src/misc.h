@@ -37,29 +37,7 @@
 
 #include "libex/defs.h"
 #include "libex/malloca.h"
-
-
-/* Helper debug logging via DebugOutputString().
- * Noop in Release builds.
- */
-#ifdef DEBUG
-    void debug_trace__(const char* fname, const char* funcname, unsigned line, const char* fmt, ...);
-    void debug_dump__(const char* fname, const char* funcname, unsigned line, const char* msg, const void* addr, size_t size);
-
-    #define TRACE(...)              debug_trace__(__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-    #define TRACE_ERR_(fnname, err) debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [%lu]", (fnname), (err))
-    #define TRACE_ERR(fnname)       debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [%lu]", (fnname), GetLastError())
-    #define TRACE_HR_(fnname, hr)   debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [0x%lx]", (fnname), (hr))
-    #define TRACE_HR(fnname)        debug_trace__(__FILE__, __FUNCTION__, __LINE__, "%hs failed. [0x%lx]", (fnname), hr)
-    #define DUMP(msg, addr, size)   debug_dump__(__FILE__, __FUNCTION__, __LINE__, (msg), (addr), (size))
-#else
-    #define TRACE(...)              do {} while(0)
-    #define TRACE_ERR_(fnname, err) do {} while(0)
-    #define TRACE_ERR(fnname)       do {} while(0)
-    #define TRACE_HR_(fnname, hr)   do {} while(0)
-    #define TRACE_HR(fnname)        do {} while(0)
-    #define DUMP(msg, addr, size)   do {} while(0)
-#endif
+#include "xtrace.h"
 
 
 /**************************************
@@ -124,7 +102,7 @@ fe_malloc(size_t size)
      * on modern CPUs cheaper. */
     mem = (fn_malloc_ == NULL) ? malloc(size) : fn_malloc_(size);
     if(mem == NULL)
-        TRACE("malloc() failed.");
+        XTRACE_E("malloc() failed.");
     return mem;
 }
 
@@ -134,7 +112,7 @@ fe_realloc(void* mem, size_t size)
     /* Ditto. */
     mem = (fn_realloc_ == NULL) ? realloc(mem, size) : fn_realloc_(mem, size);
     if(mem == NULL)
-        TRACE("realloc() failed.");
+        XTRACE_E("realloc() failed.");
     return mem;
 }
 

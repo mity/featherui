@@ -88,7 +88,7 @@ DllGetVersion(DllGetVersionInfo* dvi)
             return S_OK;
 
         default:
-            TRACE("DllGetVersion: unsupported cbSize");
+            XTRACE_E("DllGetVersion: unsupported cbSize");
             return E_INVALIDARG;
     }
 }

@@ -155,45 +155,45 @@ global_ctx_connect(void)
                 SIZEOF_ARRAY(d3d_feature_levels), D3D11_SDK_VERSION,
                 &global_ctx.d3d_device, NULL, &global_ctx.d3d_device_ctx);
     if(FAILED(hr)) {
-        TRACE_HR("D3D11CreateDevice()");
+        XTRACE_HR("D3D11CreateDevice()");
         goto err;
     }
     hr = ID3D11Device_QueryInterface(global_ctx.d3d_device, &IID_IDXGIDevice,
                 (void**) &global_ctx.dxgi_device);
     if(FAILED(hr)) {
-        TRACE_HR("ID3D11Device::QueryInterface()");
+        XTRACE_HR("ID3D11Device::QueryInterface()");
         goto err;
     }
     hr = IDXGIDevice_GetAdapter(global_ctx.dxgi_device, &global_ctx.dxgi_adapter);
     if(FAILED(hr)) {
-        TRACE_HR("IDXGIDevice::GetAdapter()");
+        XTRACE_HR("IDXGIDevice::GetAdapter()");
         goto err;
     }
     hr = IDXGIAdapter_GetParent(global_ctx.dxgi_adapter, &IID_IDXGIFactory2, (void**) &global_ctx.dxgi_factory);
     if(FAILED(hr)) {
-        TRACE_HR("IDXGIAdapter::GetParent()");
+        XTRACE_HR("IDXGIAdapter::GetParent()");
         goto err;
     }
     hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &IID_ID2D1Factory1, &d2d_factory_options,
                 (void**) &global_ctx.d2d_factory);
     if(FAILED(hr)) {
-        TRACE_HR("D2D1CreateFactory()");
+        XTRACE_HR("D2D1CreateFactory()");
         goto err;
     }
     hr = ID2D1Factory1_CreateDevice(global_ctx.d2d_factory, global_ctx.dxgi_device, &global_ctx.d2d_device);
     if(FAILED(hr)) {
-        TRACE_HR("ID2D1Factory1::CreateDevice()");
+        XTRACE_HR("ID2D1Factory1::CreateDevice()");
         goto err;
     }
     hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &global_ctx.d2d_device_ctx);
     if(FAILED(hr)) {
-        TRACE_HR("ID2D1Device::CreateDeviceContext()");
+        XTRACE_HR("ID2D1Device::CreateDeviceContext()");
         goto err;
     }
     hr = ID2D1DeviceContext_CreateSolidColorBrush(global_ctx.d2d_device_ctx, &d2d_dummy_color, NULL,
                 &global_ctx.d2d_solid_color_brush);
     if(FAILED(hr)) {
-        TRACE_HR("ID2D1DeviceContext::CreateSolidColorBrush()");
+        XTRACE_HR("ID2D1DeviceContext::CreateSolidColorBrush()");
         goto err;
     }
 
@@ -295,7 +295,7 @@ mem_canvas_connect(MemCanvas* canvas)
     if(!global_ctx.is_connected) {
         hr = global_ctx_connect();
         if(hr != S_OK) {
-            TRACE_HR("global_ctx_connect");
+            XTRACE_HR("global_ctx_connect");
             goto err;
         }
     }
@@ -303,7 +303,7 @@ mem_canvas_connect(MemCanvas* canvas)
     if(canvas->d2d_device_ctx == NULL) {
         hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &canvas->d2d_device_ctx);
         if(FAILED(hr)) {
-            TRACE_HR("ID2D1Device::CreateDeviceContext()");
+            XTRACE_HR("ID2D1Device::CreateDeviceContext()");
             goto err;
         }
     }
@@ -313,7 +313,7 @@ mem_canvas_connect(MemCanvas* canvas)
         hr = ID2D1DeviceContext_CreateBitmap1(canvas->d2d_device_ctx,
                 canvas->size, NULL, 0, &d2d_bmp_properties, &d2d_bitmap);
         if(hr != S_OK) {
-            TRACE_HR("ID2D1DeviceContext::CreateBitmap()");
+            XTRACE_HR("ID2D1DeviceContext::CreateBitmap()");
             goto err;
         }
     }
@@ -365,7 +365,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
     if(!global_ctx.is_connected) {
         hr = global_ctx_connect();
         if(hr != S_OK) {
-            TRACE_HR("global_ctx_connect");
+            XTRACE_HR("global_ctx_connect");
             goto err;
         }
     }
@@ -392,7 +392,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
                     (IUnknown*) global_ctx.d3d_device, canvas->hwnd, &desc,
                     NULL, NULL, &canvas->dxgi_swapchain);
         if(hr != S_OK) {
-            TRACE_HR("IDXGIFactory2::CreateSwapChainForHwnd()");
+            XTRACE_HR("IDXGIFactory2::CreateSwapChainForHwnd()");
             goto err;
         }
     }
@@ -400,7 +400,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
     if(canvas->d2d_device_ctx == NULL) {
         hr = ID2D1Device_CreateDeviceContext(global_ctx.d2d_device, 0, &canvas->d2d_device_ctx);
         if(hr != S_OK) {
-            TRACE_HR("ID2D1Device::CreateDeviceContext()");
+            XTRACE_HR("ID2D1Device::CreateDeviceContext()");
             goto err;
         }
     }
@@ -412,7 +412,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
         hr = IDXGISwapChain1_GetBuffer(canvas->dxgi_swapchain, 0,
                     &IID_IDXGISurface, (void**) &dxgi_buffer);
         if(hr != S_OK) {
-            TRACE_HR("IDXGISwapChain1::GetBuffer()");
+            XTRACE_HR("IDXGISwapChain1::GetBuffer()");
             goto err;
         }
 
@@ -421,7 +421,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
                     &d2d_bitmap_properties, &canvas->d2d_bitmap);
         IDXGISurface_Release(dxgi_buffer);
         if(hr != S_OK) {
-            TRACE_HR("ID2D1DeviceContext::CreateBitmapFromDxgiSurface()");
+            XTRACE_HR("ID2D1DeviceContext::CreateBitmapFromDxgiSurface()");
             goto err;
         }
     }
@@ -479,7 +479,7 @@ hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
         if(hr != S_OK) {
             /* Ouch, lets get to a well-defined state at least, and have it
              * sorted in the next WM_PAINT. */
-            TRACE_HR("IDXGISwapChain1::ResizeBuffers()");
+            XTRACE_HR("IDXGISwapChain1::ResizeBuffers()");
             hwnd_canvas_disconnect(canvas);
         }
     }
@@ -523,7 +523,7 @@ gfx_create_mem_canvas(UINT width, UINT height)
 
     hr = mem_canvas_connect(canvas);
     if(hr != S_OK) {
-        TRACE_HR("mem_canvas_connect()");
+        XTRACE_HR("mem_canvas_connect()");
         /* Note we do not fail here, we just remain "disconnected" until
          * gfx_begin(). */
     }
@@ -547,7 +547,7 @@ gfx_create_hwnd_canvas(HWND hwnd)
 
     hr = hwnd_canvas_connect(canvas);
     if(hr != S_OK) {
-        TRACE_HR("hwnd_canvas_connect()");
+        XTRACE_HR("hwnd_canvas_connect()");
         /* Note we do not fail here, we just remain "disconnected" until
          * gfx_begin(). */
     }
@@ -559,7 +559,7 @@ HRESULT
 gfx_resize_canvas(GfxCanvas* canvas, UINT width, UINT height)
 {
     if(canvas->manager.type != TYPE_HWND_CANVAS) {
-        TRACE("gfx_resize_canvas: Unsupported canvas type.");
+        XTRACE_W("gfx_resize_canvas: Unsupported canvas type.");
         return E_NOTIMPL;
     }
 
@@ -593,7 +593,7 @@ gfx_begin_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
             if(!mem_canvas->is_connected) {
                 hr = mem_canvas_connect(mem_canvas);
                 if(FAILED(hr)) {
-                    TRACE_HR("mem_canvas_connect()");
+                    XTRACE_HR("mem_canvas_connect()");
                     return hr;
                 }
             }
@@ -607,7 +607,7 @@ gfx_begin_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
             if(!hwnd_canvas->is_connected) {
                 hr = hwnd_canvas_connect(hwnd_canvas);
                 if(FAILED(hr)) {
-                    TRACE_HR("hwnd_canvas_connect()");
+                    XTRACE_HR("hwnd_canvas_connect()");
                     return hr;
                 }
             }
@@ -633,14 +633,14 @@ gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
 
     hr = ID2D1DeviceContext_EndDraw(canvas->d2d_device_ctx, &ignored, &ignored);
     if(FAILED(hr))
-        TRACE_HR("ID2D1DeviceContext::EndDraw()");
+        XTRACE_HR("ID2D1DeviceContext::EndDraw()");
 
     if(canvas->manager.type == TYPE_HWND_CANVAS) {
         HwndCanvas* hwnd_canvas = (HwndCanvas*) canvas;
         if(SUCCEEDED(hr)) {
             hr = IDXGISwapChain1_Present(hwnd_canvas->dxgi_swapchain, 1, 0);
             if(FAILED(hr))
-                TRACE_HR("IDXGISwapChain1::Present()");
+                XTRACE_HR("IDXGISwapChain1::Present()");
         }
 
         if(ps != NULL)
@@ -651,12 +651,12 @@ gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
         case DXGI_ERROR_DEVICE_RESET:
         case DXGI_ERROR_DEVICE_REMOVED:
         case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-            TRACE("Reseting complete D2D machinery.");
+            XTRACE_W("Reseting complete D2D machinery.");
             global_reset();
             break;
 
         case D2DERR_RECREATE_TARGET:
-            TRACE("Reseting canvas.");
+            XTRACE_W("Reseting canvas.");
             manager_reset(&canvas->manager);
             break;
     }
@@ -763,7 +763,7 @@ gfx_trim_mem(void)
     hr = IDXGIDevice_QueryInterface(global_ctx.dxgi_device,
                 &IID_IDXGIDevice3, (void**) &dxgi_device3);
     if(FAILED(hr)) {
-        TRACE_HR("IDXGIDevice::QueryInterface(IID_IDXGIDevice3)");
+        XTRACE_HR("IDXGIDevice::QueryInterface(IID_IDXGIDevice3)");
         global_ctx.no_trim = TRUE;
         return;
     }
@@ -787,7 +787,7 @@ gfx_init(void)
 
     hr = global_ctx_connect();
     if(hr != S_OK)
-        TRACE_HR("global_ctx_connect()");
+        XTRACE_HR("global_ctx_connect()");
 
     return hr;
 }

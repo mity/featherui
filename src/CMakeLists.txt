@@ -12,6 +12,7 @@ set(SOURCES
     mainloop.c      mainloop.h
     misc.c          misc.h
     version.c                               ../include/feather/version.h
+    xtrace.c        xtrace.h
                                             ../include/feather.h
 )
 set(DLL_SOURCES
