@@ -112,7 +112,7 @@ struct UiThemeImpl {
 
 static UiThemeImpl* impl_array = NULL;
 static UiThemeId impl_alloc = 0;
-static UiThemeId impl_max_id = 0;
+static UiThemeId impl_count = 0;
 static UiThemeId impl_free_list = 0; /* [0] is never free so we can reuse as invalid here. */
 
 
@@ -137,7 +137,7 @@ uitheme_create(UiThemeId parent_id, UiThemeId* out_id)
     UiThemeId id;
     HRESULT hr = E_FAIL;
 
-    if(impl_free_list != 0  &&  impl_max_id + 1 >= MAX_THEMES) {
+    if(impl_free_list != 0  &&  impl_count >= MAX_THEMES) {
         hr = HRESULT_FROM_WIN32(ERROR_TOO_MANY_OPEN_FILES); // FIXME: not really good err code
         XTRACE_HR("Max. quota of active themes (" STRINGIZE(MAX_THEMES) ") has been reached.");
         goto err;
@@ -147,7 +147,7 @@ uitheme_create(UiThemeId parent_id, UiThemeId* out_id)
         id = impl_free_list;
         impl_free_list = impl_array[impl_free_list].next_free;
     } else {
-        if(impl_max_id + 1 >= impl_alloc) {
+        if(impl_count >= impl_alloc) {
             UiThemeImpl* new_array;
             UiThemeId new_alloc;
 
@@ -164,7 +164,7 @@ uitheme_create(UiThemeId parent_id, UiThemeId* out_id)
             impl_alloc = new_alloc;
         }
 
-        id = ++impl_max_id;
+        id = impl_count++;
     }
 
     if(id == UITHEME_ID_LIGHT || id == UITHEME_ID_DARK) {
@@ -274,6 +274,6 @@ uitheme_fini(void)
 
     impl_array = NULL;
     impl_alloc = 0;
-    impl_max_id = 0;
+    impl_count = 0;
     impl_free_list = 0;
 }
