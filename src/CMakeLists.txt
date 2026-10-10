@@ -9,9 +9,12 @@ set(SOURCES
     # =========================================================================
     appwindow.c     appwindow.h             ../include/feather/appwindow.h
     gfx.c           gfx.h gfx_internal.h
+                    hstring_ref.h
     mainloop.c      mainloop.h
     misc.c          misc.h
     misc_alloc.c
+    system.c        system.h
+    uitheme.c       uitheme.h
     version.c                               ../include/feather/version.h
     xtrace.c        xtrace.h
                                             ../include/feather.h
