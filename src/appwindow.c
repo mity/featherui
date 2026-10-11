@@ -22,10 +22,11 @@
 #include <feather/appwindow.h>
 
 #include "misc.h"
+#include "appwindow.h"
+#include "window.h"
 #include "mainloop.h"
 #include "gfx.h"
-#include "uimetrics.h"
-#include "monitor.h"
+#include "text.h"
 
 
 static const WCHAR appwindow_classname[] = L"feather::AppWindow";
@@ -34,10 +35,7 @@ static unsigned appwindow_count = 0;
 
 typedef struct AppWindow AppWindow;
 struct AppWindow {
-    HWND hwnd;
-    GfxCanvas* canvas;
-    const UiMetrics* ui_metrics;
-    const MonitorInfo* mon_info;
+    Window win;
 };
 
 
@@ -54,48 +52,36 @@ appwindow_WM_PAINT(AppWindow* app_win)
     PAINTSTRUCT ps;
     HRESULT hr;
 
-    hr = gfx_begin_draw(app_win->canvas, &ps);
+    hr = gfx_begin_draw(app_win->win.canvas, &ps);
     if(FAILED(hr))
         XTRACE_HR("gfx_begin()");
     if(hr != S_OK)  /* S_FALSE means no issue but no need to paint either. */
         return;
 
-    gfx_clear(app_win->canvas, gfx_rgb(223, 223, 255));
-    gfx_draw_line(app_win->canvas, 10.0f, 10.5f, 100.0f, 10.5f, gfx_rgb(0, 0, 0));
-    gfx_draw_rect(app_win->canvas, 10.5f, 20.5f, 99.5f, 29.5f, gfx_rgb(0, 0, 0));
-    gfx_fill_rect(app_win->canvas, 10.0f, 40.0f, 100.0f, 50.0f, gfx_rgb(0, 0, 0));
-    gfx_fill_rounded_rect(app_win->canvas, 10.0f, 60.0f, 100.0f, 100.0f, 4.0f, 4.0f, gfx_rgb(0, 0, 0));
-    gfx_fill_rounded_rect(app_win->canvas, 10.0f, 110.0f, 100.0f, 150.0f, 8.0f, 8.0f, gfx_rgb(0, 0, 0));
+    gfx_clear(app_win->win.canvas, gfx_rgb(223, 223, 255));
+    gfx_draw_line(app_win->win.canvas, 10.0f, 10.5f, 100.0f, 10.5f, gfx_rgb(0, 0, 0));
+    gfx_draw_rect(app_win->win.canvas, 10.5f, 20.5f, 99.5f, 29.5f, gfx_rgb(0, 0, 0));
+    gfx_fill_rect(app_win->win.canvas, 10.0f, 40.0f, 100.0f, 50.0f, gfx_rgb(0, 0, 0));
+    gfx_fill_rounded_rect(app_win->win.canvas, 10.0f, 60.0f, 100.0f, 100.0f, 4.0f, 4.0f, gfx_rgb(0, 0, 0));
+    gfx_fill_rounded_rect(app_win->win.canvas, 10.0f, 110.0f, 100.0f, 150.0f, 8.0f, 8.0f, gfx_rgb(0, 0, 0));
 
-    hr = gfx_end_draw(app_win->canvas, &ps);
+    {
+        TextFont* font;
+        TextLayout* layout;
+
+        font = text_create_font(text_default_text_font_name, 14.0);
+
+        layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
+                        font, 100.0f, 20.0f,
+                        TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);
+        gfx_draw_text_layout(app_win->win.canvas, 150.0f, 50.0f, layout, gfx_rgb(0, 0, 0));
+        text_destroy_layout(layout);
+        text_destroy_font(font);
+    }
+
+    hr = gfx_end_draw(app_win->win.canvas, &ps);
     if(FAILED(hr))
         XTRACE_HR("gfx_end_draw()");
-}
-
-static void
-appwindow_WM_WINDOWPOSCHANGED(AppWindow* app_win, const WINDOWPOS* pos)
-{
-    HMONITOR mon_handle;
-
-    UNUSED(pos);
-
-    /* Check whether we're migrating to a different monitor. */
-    mon_handle = MonitorFromWindow(app_win->hwnd, MONITOR_DEFAULTTONEAREST);
-    if(app_win->mon_info == NULL  ||  mon_handle != app_win->mon_info->handle) {
-        monitor_release(app_win->mon_info);
-        app_win->mon_info = monitor_acquire(mon_handle);
-    }
-}
-
-static void
-appwindow_WM_DPICHANGED(AppWindow* app_win, UINT dpi_x, UINT dpi_y, const RECT* rect_hint)
-{
-    UNUSED(rect_hint);
-
-    if(dpi_x != app_win->ui_metrics->dpi_x || dpi_y != app_win->ui_metrics->dpi_y) {
-        uimetrics_release(app_win->ui_metrics);
-        app_win->ui_metrics = uimetrics_acquire(dpi_x, dpi_y);
-    }
 }
 
 static void
@@ -111,9 +97,6 @@ static LRESULT
 appwindow_WM_NCCREATE(HWND hwnd, const CREATESTRUCT* cs)
 {
     AppWindow* app_win;
-    uint16_t dpi_x, dpi_y;
-
-    UNUSED(cs);
 
     app_win = (AppWindow*) fe_malloc(sizeof(AppWindow));
     if(app_win == NULL) {
@@ -124,18 +107,8 @@ appwindow_WM_NCCREATE(HWND hwnd, const CREATESTRUCT* cs)
     memset(app_win, 0, sizeof(AppWindow));
     SetWindowLongPtr(hwnd, 0, (LONG_PTR) app_win);
 
-    app_win->hwnd = hwnd;
-    app_win->canvas = gfx_create_hwnd_canvas(hwnd);
-    if(app_win->canvas == NULL) {
-        XTRACE_E("gfx_create_hwnd_canvas() failed.");
+    if(window_WM_NCCREATE(&app_win->win, hwnd, cs) != TRUE)
         return FALSE;
-    }
-
-    dpi_x = GetDpiForWindow(hwnd);
-    dpi_y = dpi_x;
-    app_win->ui_metrics = uimetrics_acquire(dpi_x, dpi_y);
-
-    app_win->mon_info = monitor_acquire(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
 
     appwindow_count++;
     return TRUE;
@@ -148,12 +121,7 @@ appwindow_WM_NCDESTROY(AppWindow* app_win)
     if(app_win == NULL)
         return;
 
-    if(app_win->ui_metrics != NULL)
-        uimetrics_release(app_win->ui_metrics);
-    if(app_win->mon_info != NULL)
-        monitor_release(app_win->mon_info);
-    if(app_win->canvas != NULL)
-        gfx_destroy_canvas(app_win->canvas);
+    window_WM_NCDESTROY(&app_win->win);
 
     appwindow_count--;
     fe_free(app_win);
@@ -173,18 +141,11 @@ appwindow_WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             return 0;
 
         case WM_WINDOWPOSCHANGED:
-            appwindow_WM_WINDOWPOSCHANGED(app_win, (const WINDOWPOS*) lp);
+            window_WM_WINDOWPOSCHANGED(&app_win->win, (const WINDOWPOS*) lp);
             break;
 
-        case WM_SIZE:
-            if(wp == SIZE_RESTORED || wp == SIZE_MAXIMIZED) {
-                gfx_resize_canvas(app_win->canvas, LOWORD(lp), HIWORD(lp));
-                UpdateWindow(hwnd);
-            }
-            return 0;
-
         case WM_DPICHANGED:
-            appwindow_WM_DPICHANGED(app_win, LOWORD(wp), HIWORD(wp), (const RECT*) lp);
+            window_WM_DPICHANGED(&app_win->win, LOWORD(wp), HIWORD(wp), (const RECT*) lp);
             return 0;
 
         case WM_CLOSE:
@@ -244,7 +205,7 @@ feAppWindow_Create(HWND* pHwnd)
 
     hwnd = CreateWindowEx(WS_EX_APPWINDOW, appwindow_classname, L"App Name",
                     WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                    CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL,
+                    500, 300, NULL, NULL,
                     dll_feather, 0);
     if(hwnd == NULL) {
         XTRACE_ERR("CreateWindowEx()");

@@ -36,8 +36,8 @@ struct MonitorInfo {
 };
 
 
-const MonitorInfo* monitor_acquire(HMONITOR handle);
-void monitor_release(const MonitorInfo* mon_info);
+const MonitorInfo* monitor_attach(HMONITOR handle);
+void monitor_detach(const MonitorInfo* mon_info);
 
 
 HRESULT monitor_init(void);

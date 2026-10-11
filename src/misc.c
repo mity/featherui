@@ -25,17 +25,20 @@
 #include "project.h"
 /* The following ones are included just for their init/fini functions. */
 #include "appwindow.h"
+#include "colortheme.h"
+#include "dpi.h"
+#include "fonttheme.h"
 #include "gfx.h"
 #include "monitor.h"
 #include "system.h"
 #include "text.h"
-#include "uimetrics.h"
-#include "uitheme.h"
 
 
 HMODULE dll_feather = NULL;
 HMODULE dll_kernel32 = NULL;
 HMODULE dll_ntdll = NULL;
+
+WCHAR fe_locale_name[LOCALE_NAME_MAX_LENGTH] = L"";
 
 
 /**********************************
@@ -59,9 +62,10 @@ static const struct {
     MODULE(system_init,     system_fini),       /* keep 1st */
     MODULE(gfx_init,        gfx_fini),
     MODULE(text_init,       text_fini),
-    MODULE(uimetrics_init,  uimetrics_fini),
-    MODULE(uitheme_init,    uitheme_fini),
+    MODULE(colortheme_init, colortheme_fini),
+    MODULE(fonttheme_init,  fonttheme_fini),
     MODULE(monitor_init,    monitor_fini),
+    MODULE(dpi_init,        dpi_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE
@@ -124,7 +128,7 @@ DllMain(HINSTANCE hInstance, DWORD reason, void* reserved)
 void fe_set_allocator(const FeAllocator* allocator);
 
 HRESULT FEATHER_API
-feInitialize(const FeAllocator* allocator, DWORD dwFlags)
+feInitialize(const WCHAR* pszLocaleName, const FeAllocator* allocator, DWORD dwFlags)
 {
     HRESULT hr;
     int i;
@@ -132,6 +136,17 @@ feInitialize(const FeAllocator* allocator, DWORD dwFlags)
     UNUSED(dwFlags);
 
     trace_hr_once();
+
+    if(pszLocaleName != NULL  &&  pszLocaleName[0] != L'\0') {
+        if(!IsValidLocaleName(pszLocaleName)  ||  wcslen(pszLocaleName) >= LOCALE_NAME_MAX_LENGTH) {
+            XTRACE_E("Invalid locale name: %ls", pszLocaleName);
+            return HRESULT_FROM_WIN32(ERROR_INVALID_PARAMETER);
+        }
+
+        wcscpy(fe_locale_name, pszLocaleName);
+    } else {
+        GetUserDefaultLocaleName(fe_locale_name, LOCALE_NAME_MAX_LENGTH);
+    }
 
     if(allocator != NULL) {
         if(allocator->fnMalloc == NULL  ||

@@ -19,30 +19,22 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef FE_UIMETRICS_H
-#define FE_UIMETRICS_H
+#ifndef FE_UISETTINGS_H
+#define FE_UISETTINGS_H
 
 #include "misc.h"
-#include "text.h"
 
 
-/* This describes a monitor and holds some metrics scaled for the given DPI.
- */
-
-typedef struct UiMetrics UiMetrics;
-struct UiMetrics {
-    uint16_t dpi_x;
-    uint16_t dpi_y;
-
-    TextFont* gui_font;
+typedef struct UiSettings UiSettings;
+struct UiSettings {
+    unsigned use_light_theme                : 1;
+    unsigned use_transparency_effects       : 1;
+    unsigned optimize_for_left_handed_user  : 1;
+    double text_scale_factor;   /* Accessibility text scaling (on top of DPI) */
 };
 
 
-const UiMetrics* uimetrics_acquire(uint16_t dpi_x, uint16_t dpi_y);
-void uimetrics_release(const UiMetrics* metrics);
-
-HRESULT uimetrics_init(void);
-void uimetrics_fini(void);
+HRESULT uisettings_load(UiSettings* settings);
 
 
-#endif  /* FE_UIMETRICS_H */
+#endif  /* FE_UISETTINGS_H */

@@ -108,6 +108,8 @@ void fe_free(void* ptr);
  *** Few Useful Globals ***
  **************************/
 
+extern WCHAR fe_locale_name[LOCALE_NAME_MAX_LENGTH];
+
 extern HMODULE dll_feather;
 extern HMODULE dll_kernel32;
 extern HMODULE dll_ntdll;

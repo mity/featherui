@@ -20,9 +20,8 @@
  */
 
 #include "gfx.h"
-
-#define HELLO_FROM_GFX_C
 #include "gfx_internal.h"
+#include "window.h"
 
 #include "libex/list.h"
 
@@ -33,7 +32,7 @@
 
 typedef enum D2dBitmapPurpose D2dBitmapPurpose;
 enum D2dBitmapPurpose {
-    D2D_BITMAP_BACKBUFFER = 0,  /* a back buffer for HWND canvas */
+    D2D_BITMAP_BACKBUFFER = 0,  /* a back buffer for window canvas */
     D2D_BITMAP_CANVAS = 1,      /* an in-memory canvas */
     D2D_BITMAP_RESOURCE = 2     /* an immutable image resource */
 };
@@ -95,7 +94,7 @@ static GlobalCtx global_ctx = { 0 };
  * a "manager". */
 typedef enum ManagerType ManagerType;
 enum ManagerType {
-    TYPE_HWND_CANVAS,
+    TYPE_WIN_CANVAS,
     TYPE_MEM_CANVAS
 };
 
@@ -120,9 +119,9 @@ manager_fini(Manager* manager)
 
 /* Forward declarations */
 typedef struct MemCanvas MemCanvas;
-typedef struct HwndCanvas HwndCanvas;
+typedef struct WinCanvas WinCanvas;
 static void mem_canvas_disconnect(MemCanvas* canvas);
-static void hwnd_canvas_disconnect(HwndCanvas* canvas);
+static void win_canvas_disconnect(WinCanvas* canvas);
 
 static void
 manager_reset(Manager* manager)
@@ -131,7 +130,7 @@ manager_reset(Manager* manager)
         /* Note: We just shut disconnect. Individual managers should be
          * to re-connect on their own in a lazy fashion. */
         case TYPE_MEM_CANVAS:   mem_canvas_disconnect((MemCanvas*) manager); break;
-        case TYPE_HWND_CANVAS:  hwnd_canvas_disconnect((HwndCanvas*) manager); break;
+        case TYPE_WIN_CANVAS:   win_canvas_disconnect((WinCanvas*) manager); break;
         default:                UNREACHABLE();
     }
 }
@@ -251,8 +250,8 @@ global_ctx_disconnect(void)
 
 typedef struct MemCanvas MemCanvas;
 static void mem_canvas_disconnect(MemCanvas* manager);
-typedef struct HwndCanvas HwndCanvas;
-static void hwnd_canvas_disconnect(HwndCanvas* manager);
+typedef struct WinCanvas WinCanvas;
+static void win_canvas_disconnect(WinCanvas* manager);
 
 
 static void
@@ -341,22 +340,22 @@ mem_canvas_disconnect(MemCanvas* canvas)
 }
 
 
-/*******************
- *** HWND Canvas ***
- *******************/
+/*********************
+ *** Window Canvas ***
+ *********************/
 
-struct HwndCanvas {
+struct WinCanvas {
     Manager manager;                    /* Keep 1st */
     ID2D1DeviceContext* d2d_device_ctx; /* Keep 2nd */
     IDXGISwapChain1* dxgi_swapchain;
     ID2D1Bitmap1* d2d_bitmap;
 
-    HWND hwnd;
+    Window* win;
     BOOL is_connected;
 };
 
 static HRESULT
-hwnd_canvas_connect(HwndCanvas* canvas)
+win_canvas_connect(WinCanvas* canvas)
 {
     HRESULT hr = E_FAIL;
 
@@ -374,12 +373,9 @@ hwnd_canvas_connect(HwndCanvas* canvas)
      * members are fine. */
     if(canvas->dxgi_swapchain == NULL) {
         DXGI_SWAP_CHAIN_DESC1 desc = { 0 };
-        RECT client;
 
-        GetClientRect(canvas->hwnd, &client);
-
-        desc.Width = rect_width(&client);
-        desc.Height = rect_height(&client);
+        desc.Width = canvas->win->width;
+        desc.Height = canvas->win->height;
         desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         desc.SampleDesc.Count = 1;
         desc.SampleDesc.Quality = 0;
@@ -389,7 +385,7 @@ hwnd_canvas_connect(HwndCanvas* canvas)
         desc.Scaling = DXGI_SCALING_NONE;
 
         hr = IDXGIFactory2_CreateSwapChainForHwnd(global_ctx.dxgi_factory,
-                    (IUnknown*) global_ctx.d3d_device, canvas->hwnd, &desc,
+                    (IUnknown*) global_ctx.d3d_device, canvas->win->hwnd, &desc,
                     NULL, NULL, &canvas->dxgi_swapchain);
         if(hr != S_OK) {
             XTRACE_HR("IDXGIFactory2::CreateSwapChainForHwnd()");
@@ -427,18 +423,20 @@ hwnd_canvas_connect(HwndCanvas* canvas)
     }
 
     ID2D1DeviceContext_SetTarget(canvas->d2d_device_ctx, (void*) canvas->d2d_bitmap);
+    ID2D1DeviceContext_SetTextRenderingParams(canvas->d2d_device_ctx,
+            (IDWriteRenderingParams*) canvas->win->mon_info->text_rendering_params);
 
     /* Success */
     canvas->is_connected = TRUE;
     return S_OK;
 
 err:
-    hwnd_canvas_disconnect(canvas);
+    win_canvas_disconnect(canvas);
     return hr;
 }
 
 static void
-hwnd_canvas_disconnect(HwndCanvas* canvas)
+win_canvas_disconnect(WinCanvas* canvas)
 {
     canvas->is_connected = FALSE;
 
@@ -459,9 +457,11 @@ hwnd_canvas_disconnect(HwndCanvas* canvas)
 /* This must be called in response to a resize of the window which owns
  * this context. */
 static void
-hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
+win_canvas_resize(WinCanvas* canvas, UINT width, UINT height)
 {
     HRESULT hr = E_FAIL;
+
+    XTRACE("win_canvas_resize(%u, %u)", width, height);
 
     canvas->is_connected = FALSE;
 
@@ -480,11 +480,11 @@ hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
             /* Ouch, lets get to a well-defined state at least, and have it
              * sorted in the next WM_PAINT. */
             XTRACE_HR("IDXGISwapChain1::ResizeBuffers()");
-            hwnd_canvas_disconnect(canvas);
+            win_canvas_disconnect(canvas);
         }
     }
 
-    InvalidateRect(canvas->hwnd, NULL, FALSE);
+    InvalidateRect(canvas->win->hwnd, NULL, FALSE);
 }
 
 
@@ -495,14 +495,14 @@ hwnd_canvas_resize(HwndCanvas* canvas, UINT width, UINT height)
 struct GfxCanvas {
     union {
         /* Every abstraction which wants to be compatible with our canvas
-         * gfxing routines must begin with these members. */
+         * drawing routines must begin with these members. */
         struct {
             Manager manager;
             ID2D1DeviceContext* d2d_device_ctx;
             BOOL is_connected;
         };
 
-        HwndCanvas hwnd_canvas;
+        WinCanvas win_canvas;
     };
 };
 
@@ -532,22 +532,22 @@ gfx_create_mem_canvas(UINT width, UINT height)
 }
 
 GfxCanvas*
-gfx_create_hwnd_canvas(HWND hwnd)
+gfx_create_win_canvas(Window* win)
 {
-    HwndCanvas* canvas;
+    WinCanvas* canvas;
     HRESULT hr;
 
-    canvas = (HwndCanvas*) fe_malloc(sizeof(HwndCanvas));
+    canvas = (WinCanvas*) fe_malloc(sizeof(WinCanvas));
     if(canvas == NULL)
         return NULL;
-    memset(canvas, 0, sizeof(HwndCanvas));
+    memset(canvas, 0, sizeof(WinCanvas));
 
-    manager_init(&canvas->manager, TYPE_HWND_CANVAS);
-    canvas->hwnd = hwnd;
+    manager_init(&canvas->manager, TYPE_WIN_CANVAS);
+    canvas->win = win;
 
-    hr = hwnd_canvas_connect(canvas);
+    hr = win_canvas_connect(canvas);
     if(hr != S_OK) {
-        XTRACE_HR("hwnd_canvas_connect()");
+        XTRACE_HR("win_canvas_connect()");
         /* Note we do not fail here, we just remain "disconnected" until
          * gfx_begin(). */
     }
@@ -558,13 +558,20 @@ gfx_create_hwnd_canvas(HWND hwnd)
 HRESULT
 gfx_resize_canvas(GfxCanvas* canvas, UINT width, UINT height)
 {
-    if(canvas->manager.type != TYPE_HWND_CANVAS) {
+    if(canvas->manager.type != TYPE_WIN_CANVAS) {
         XTRACE_W("gfx_resize_canvas: Unsupported canvas type.");
         return E_NOTIMPL;
     }
 
-    hwnd_canvas_resize((HwndCanvas*) canvas, width, height);
+    win_canvas_resize((WinCanvas*) canvas, width, height);
     return S_OK;
+}
+
+void
+gfx_set_text_rendering_params(GfxCanvas* canvas, TextRenderingParams* params)
+{
+    ID2D1DeviceContext_SetTextRenderingParams(canvas->d2d_device_ctx,
+                (IDWriteRenderingParams*) params);
 }
 
 void
@@ -573,7 +580,7 @@ gfx_destroy_canvas(GfxCanvas* canvas)
     manager_fini(&canvas->manager);
 
     switch(canvas->manager.type) {
-        case TYPE_HWND_CANVAS:  hwnd_canvas_disconnect((HwndCanvas*) canvas); break;
+        case TYPE_WIN_CANVAS:   win_canvas_disconnect((WinCanvas*) canvas); break;
         case TYPE_MEM_CANVAS:   mem_canvas_disconnect((MemCanvas*) canvas); break;
         default:                UNREACHABLE();
     }
@@ -600,20 +607,20 @@ gfx_begin_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
             break;
         }
 
-        case TYPE_HWND_CANVAS:
+        case TYPE_WIN_CANVAS:
         {
-            HwndCanvas* hwnd_canvas = (HwndCanvas*) canvas;
+            WinCanvas* win_canvas = (WinCanvas*) canvas;
 
-            if(!hwnd_canvas->is_connected) {
-                hr = hwnd_canvas_connect(hwnd_canvas);
+            if(!win_canvas->is_connected) {
+                hr = win_canvas_connect(win_canvas);
                 if(FAILED(hr)) {
-                    XTRACE_HR("hwnd_canvas_connect()");
+                    XTRACE_HR("win_canvas_connect()");
                     return hr;
                 }
             }
 
             if(ps != NULL)
-                BeginPaint(hwnd_canvas->hwnd, ps);
+                BeginPaint(win_canvas->win->hwnd, ps);
             break;
         }
 
@@ -635,16 +642,16 @@ gfx_end_draw(GfxCanvas* canvas, PAINTSTRUCT* ps)
     if(FAILED(hr))
         XTRACE_HR("ID2D1DeviceContext::EndDraw()");
 
-    if(canvas->manager.type == TYPE_HWND_CANVAS) {
-        HwndCanvas* hwnd_canvas = (HwndCanvas*) canvas;
+    if(canvas->manager.type == TYPE_WIN_CANVAS) {
+        WinCanvas* win_canvas = (WinCanvas*) canvas;
         if(SUCCEEDED(hr)) {
-            hr = IDXGISwapChain1_Present(hwnd_canvas->dxgi_swapchain, 1, 0);
+            hr = IDXGISwapChain1_Present(win_canvas->dxgi_swapchain, 1, 0);
             if(FAILED(hr))
                 XTRACE_HR("IDXGISwapChain1::Present()");
         }
 
         if(ps != NULL)
-            EndPaint(hwnd_canvas->hwnd, ps);
+            EndPaint(win_canvas->win->hwnd, ps);
     }
 
     switch(hr) {
@@ -741,6 +748,17 @@ gfx_fill_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1,
     ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
     ID2D1DeviceContext_FillRoundedRectangle(canvas->d2d_device_ctx, &d2d_rounded_rect,
                 (ID2D1Brush*) global_ctx.d2d_solid_color_brush);
+}
+
+void
+gfx_draw_text_layout(GfxCanvas* canvas, float x0, float y0, TextLayout* layout, GfxColor color)
+{
+    D2D_POINT_2F pt = { x0, y0 };
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_DrawTextLayout(canvas->d2d_device_ctx, pt, (IDWriteTextLayout*) layout,
+            (ID2D1Brush*) global_ctx.d2d_solid_color_brush, D2D1_DRAW_TEXT_OPTIONS_CLIP);
 }
 
 

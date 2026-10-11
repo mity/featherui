@@ -47,13 +47,14 @@ struct FeAllocator {
  * A typical FeatherUI-based application calls this function once during
  * its startup, before creating any application window.
  *
+ * @param pszLocaleName Locale name or `NULL` to use default user's locale.
  * @param lpcAllocator Optional caller-provided custom allocator. If `NULL`,
  * the standard `malloc()`, `realloc()` and `free()` are used.
  * @param dwFlags Reserved, set to zero.
  *
  * @return If the function succeeds, `S_OK` (0) is returned.
  */
-HRESULT FEATHER_API feInitialize(const FeAllocator* lpcAllocator, DWORD dwFlags);
+HRESULT FEATHER_API feInitialize(const WCHAR* pszLocaleName, const FeAllocator* lpcAllocator, DWORD dwFlags);
 
 /**
  * Release any resources the library may have allocated in previous

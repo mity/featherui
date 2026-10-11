@@ -30,6 +30,10 @@ typedef struct TextLayout TextLayout;
 typedef struct TextRenderingParams TextRenderingParams;
 
 
+extern const WCHAR* text_default_text_font_name;
+extern const WCHAR* text_default_icon_font_name;
+
+
 typedef enum TextFontWeight TextFontWeight;
 enum TextFontWeight {
     TEXT_FONT_WEIGHT_THIN = 100,
@@ -101,10 +105,8 @@ TextLayout* text_create_layout(const WCHAR* str, UINT str_len, TextFont* font,
             float max_width, float max_height, DWORD flags);
 void text_destroy_layout(TextLayout* layout);
 
-
 TextRenderingParams* text_create_rendering_params(HMONITOR mon_handle);
 void text_destroy_rendering_params(TextRenderingParams* params);
-
 
 HRESULT text_init(void);
 void text_fini(void);

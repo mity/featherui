@@ -41,7 +41,7 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nSh
     UNUSED(lpCmdLine);
     UNUSED(nShowCmd);
 
-    feInitialize(NULL, 0);
+    feInitialize(NULL, NULL, 0);
 
     feAppWindow_Create(NULL);
     feRun(&exit_code);

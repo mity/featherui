@@ -22,20 +22,6 @@
 #ifndef GFX_INTERNAL_H
 #define GFX_INTERNAL_H
 
-
-/* Hula loops for C-compatible Direct2D and DirectWrite interfaces.
- *
- * Support in mingw-w64 is problematic [^1].
- * And Microsoft SDK seem to have drop C support in these headers ages ago.
- *
- * [^1]: https://sourceforge.net/p/mingw-w64/bugs/1040/
- */
-
-#if !(defined HELLO_FROM_GFX_C || defined HELLO_FROM_TEXT_C)
-    #error Hey, this is _our_ stuff. Use "gfx.h" and "text.h".
-    #error (You do NOT want to use this. Believe me.)
-#endif
-
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <dxgi1_3.h>

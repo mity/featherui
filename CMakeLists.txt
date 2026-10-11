@@ -32,7 +32,7 @@ endif()
 
 if("${CMAKE_C_COMPILER_ID}" MATCHES "GNU|Clang")
     # Enable warnings:
-    add_compile_options(-Wall -Wextra -Wshadow -Wdouble-promotion -Wdeclaration-after-statement)
+    add_compile_options(-Wall -Wextra -Wshadow -Wdeclaration-after-statement)
 
     # Use Unicode (so we may avoid using -W suffixed symbols):
     add_compile_options(-municode)

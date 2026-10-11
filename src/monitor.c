@@ -75,7 +75,7 @@ monitor_destroy(MonitorImpl* impl)
 }
 
 const MonitorInfo*
-monitor_acquire(HMONITOR handle)
+monitor_attach(HMONITOR handle)
 {
     ListNode* node;
     MonitorImpl* impl;
@@ -96,7 +96,7 @@ monitor_acquire(HMONITOR handle)
 }
 
 void
-monitor_release(const MonitorInfo* mon_info)
+monitor_detach(const MonitorInfo* mon_info)
 {
     MonitorImpl* impl;
 

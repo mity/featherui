@@ -79,7 +79,7 @@
  * resources like the buffers under the hood but the painted state (the
  * contents of those buffer) will be lost.
  *
- * For HWND canvas this is easy: When it fails as for it, gfx_end_draw()
+ * For window canvas this is easy: When it fails as for it, gfx_end_draw()
  * automatically invalidates complete window when this happens, so that
  * the next call to WM_PAINT should fix it and the caller does not need
  * anything special.
@@ -135,14 +135,21 @@ typedef struct GfxCanvas GfxCanvas;
 typedef struct GfxBrush GfxBrush;
 
 
+/* Few opaque types we need below. */
+typedef struct Window Window;
+typedef struct TextRenderingParams TextRenderingParams;
+typedef struct TextLayout TextLayout;
+
+
 GfxCanvas* gfx_create_mem_canvas(UINT width, UINT height);
-GfxCanvas* gfx_create_hwnd_canvas(HWND hwnd);
+GfxCanvas* gfx_create_win_canvas(Window* win);
 void gfx_destroy_canvas(GfxCanvas* canvas);
 
 /* Resize canvas
- * (currently? only supported for HWND canvas)
+ * (currently? only supported for window canvas)
  */
 HRESULT gfx_resize_canvas(GfxCanvas* canvas, UINT width, UINT height);
+void gfx_set_text_rendering_params(GfxCanvas* canvas, TextRenderingParams* params);
 
 /* These replace the WinAPI BeginPaint() and EndPaint(),
  * ps can be NULL. */
@@ -159,6 +166,9 @@ void gfx_draw_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, floa
 /* Filling operations */
 void gfx_fill_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, GfxColor color);
 void gfx_fill_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, float rx, float ry, GfxColor color);
+
+/* Text rendering */
+void gfx_draw_text_layout(GfxCanvas* canvas, float x0, float y0, TextLayout* layout, GfxColor color);
 
 /* This may be called when we suspect that this process won't need to do
  * any Direct2D/3D in near future. It has no impact on the state of the

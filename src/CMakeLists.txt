@@ -8,6 +8,9 @@ set(SOURCES
     # *.c:          # *.h:                  # public *.h:
     # =========================================================================
     appwindow.c     appwindow.h             ../include/feather/appwindow.h
+    colortheme.c    colortheme.h
+    dpi.c           dpi.h
+    fonttheme.c     fonttheme.h
     gfx.c           gfx.h gfx_internal.h
                     hstring_ref.h
     mainloop.c      mainloop.h
@@ -16,9 +19,9 @@ set(SOURCES
     monitor.c       monitor.h
     system.c        system.h
     text.c          text.h
-    uimetrics.c     uimetrics.h
-    uitheme.c       uitheme.h
+    uisettings.c    uisettings.h
     version.c                               ../include/feather/version.h
+    window.c        window.h
     xtrace.c        xtrace.h
                                             ../include/feather.h
 )
