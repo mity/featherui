@@ -31,8 +31,9 @@
  * [^1]: https://sourceforge.net/p/mingw-w64/bugs/1040/
  */
 
-#ifndef HELLO_FROM_GFX_C
-    #error Hey, this is _my_ stuff. Use "gfx.h" instead.
+#if !(defined HELLO_FROM_GFX_C || defined HELLO_FROM_TEXT_C)
+    #error Hey, this is _our_ stuff. Use "gfx.h" and "text.h".
+    #error (You do NOT want to use this. Believe me.)
 #endif
 
 #include <dxgi.h>

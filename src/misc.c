@@ -26,7 +26,10 @@
 /* The following ones are included just for their init/fini functions. */
 #include "appwindow.h"
 #include "gfx.h"
+#include "monitor.h"
 #include "system.h"
+#include "text.h"
+#include "uimetrics.h"
 #include "uitheme.h"
 
 
@@ -52,10 +55,13 @@ static const struct {
     #define MODULE(func_init, func_fini)      { (func_init), (func_fini) }
 #endif
 
-    /* Be careful here: The order matters, there may be module dependencies. */
+    /* Be careful here: The order matters, there are dependencies. */
     MODULE(system_init,     system_fini),       /* keep 1st */
-    MODULE(uitheme_init,     uitheme_fini),
     MODULE(gfx_init,        gfx_fini),
+    MODULE(text_init,       text_fini),
+    MODULE(uimetrics_init,  uimetrics_fini),
+    MODULE(uitheme_init,    uitheme_fini),
+    MODULE(monitor_init,    monitor_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE

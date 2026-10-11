@@ -13,7 +13,10 @@ set(SOURCES
     mainloop.c      mainloop.h
     misc.c          misc.h
     misc_alloc.c
+    monitor.c       monitor.h
     system.c        system.h
+    text.c          text.h
+    uimetrics.c     uimetrics.h
     uitheme.c       uitheme.h
     version.c                               ../include/feather/version.h
     xtrace.c        xtrace.h
@@ -28,8 +31,8 @@ set(STATIC_SOURCES
 )
 
 set(LIBS
-    c_d2d_dwrite ex         # ../external
-    dxguid dxgi d2d1 d3d11  # system/toolchain
+    c_d2d_dwrite ex                         # ../external
+    dwrite dxguid dxgi d2d1 d3d11 shcore    # system/toolchain
 )
 
 set(PUBLIC_INCDIRS

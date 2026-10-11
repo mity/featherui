@@ -421,8 +421,24 @@ config_retrieve_immersive_color_set(void)
 static void
 config_retrieve_window_metrics(void)
 {
-    // FIXME: Do we actually need this?
-    XTRACE_W("not yet implemented.");
+    NONCLIENTMETRICS nc_metrics;
+
+    nc_metrics.cbSize = sizeof(NONCLIENTMETRICS);
+    SystemParametersInfo(SPI_GETNONCLIENTMETRICS,
+            nc_metrics.cbSize, &nc_metrics, 0);
+
+    XTRACE("lfCaptionFont: %ls; height %ld",
+            nc_metrics.lfCaptionFont.lfFaceName, nc_metrics.lfCaptionFont.lfHeight);
+    XTRACE("lfSmCaptionFont: %ls; height %ld",
+            nc_metrics.lfSmCaptionFont.lfFaceName, nc_metrics.lfSmCaptionFont.lfHeight);
+    XTRACE("lfMenuFont: %ls; height %ld",
+            nc_metrics.lfMenuFont.lfFaceName, nc_metrics.lfMenuFont.lfHeight);
+    XTRACE("lfStatusFont: %ls; height %ld",
+            nc_metrics.lfStatusFont.lfFaceName, nc_metrics.lfStatusFont.lfHeight);
+    XTRACE("lfMessageFont: %ls; height %ld",
+            nc_metrics.lfMessageFont.lfFaceName, nc_metrics.lfMessageFont.lfHeight);
+
+    memcpy(&system_config.ui_font, &nc_metrics.lfMessageFont, sizeof(LOGFONT));
 }
 
 static void
