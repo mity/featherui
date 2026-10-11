@@ -1,0 +1,14 @@
+/*
+ * This file contains example code for mCtrl library. Code of this example
+ * (but not the library itself) has been released into the public domain.
+ */
+
+#include <windows.h>
+
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(65001)    /* UTF-8 */
+
+
+/* Manifest enabling XP theme on Win XP */
+1 RT_MANIFEST manifest.xml
