@@ -1,0 +1,39 @@
+name: Pull request declarations
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  contributor-declarations:
+    name: Contributor declarations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required declarations
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PR_BODY:-}" ]]; then
+            echo "::error::The pull request description is empty. Please use the pull request template and check both contributor declarations."
+            exit 1
+          fi
+
+          # Match the two exact declaration labels and require a checked
+          # Markdown checkbox on the same line. Unchecked boxes ([ ]) fail.
+          if ! grep -Eiq '^[[:space:]]*-[[:space:]]*\[x\][[:space:]]+\*\*Rights to contribute:' <<< "$PR_BODY"; then
+            echo "::error::Please check the 'Rights to contribute' declaration in the pull request template."
+            exit 1
+          fi
+
+          if ! grep -Eiq '^[[:space:]]*-[[:space:]]*\[x\][[:space:]]+\*\*Dual licensing:' <<< "$PR_BODY"; then
+            echo "::error::Please check the 'Dual licensing and commercial license' declaration in the pull request template."
+            exit 1
+          fi
+
+          echo "Both contributor declarations are checked."
