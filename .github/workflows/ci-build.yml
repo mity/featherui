@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: nmake
 
-msys2-mingw32:
+  msys2-mingw32:
     runs-on: windows-latest
     defaults:
       run:
