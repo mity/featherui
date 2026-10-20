@@ -25,6 +25,7 @@
 #include "monitor.h"
 #include "system.h"
 #include "text.h"
+#include "uisettings.h"
 #include "window.h"
 
 
@@ -56,6 +57,7 @@ static const struct {
     MODULE(system_init,     system_fini),       /* keep 1st */
     MODULE(gfx_init,        gfx_fini),
     MODULE(text_init,       text_fini),
+    MODULE(uisettings_init, uisettings_fini),
     MODULE(colortheme_init, colortheme_fini),
     MODULE(fonttheme_init,  fonttheme_fini),
     MODULE(monitor_init,    monitor_fini),

@@ -19,6 +19,8 @@
 
 FontThemeId fonttheme_default_id;
 
+static float fontheme_global_text_scale_factor = 1.0f;
+
 
 typedef struct FontThemeImpl FontThemeImpl;
 struct FontThemeImpl {
@@ -99,6 +101,16 @@ fonttheme_destroy(FontThemeId id)
 }
 
 
+void
+fonttheme_apply_uisettings(UiSettings* settings)
+{
+    fontheme_global_text_scale_factor = settings->text_scale_factor;
+
+    // TODO: update the themes accordingly, and propagate also to
+    // DpiData + refresh affected windows.
+}
+
+
 HRESULT
 fonttheme_init(void)
 {
@@ -132,6 +144,7 @@ fonttheme_init(void)
     fonttheme_array[0].impl->theme.locale_name = fe_locale_name;
     fonttheme_array[0].impl->theme.text_font_name = text_default_text_font_name;
     fonttheme_array[0].impl->theme.icon_font_name = text_default_icon_font_name;
+    fonttheme_array[0].impl->theme.text_scale_factor = fontheme_global_text_scale_factor;
     memcpy(fonttheme_array[0].impl->theme.font_weight, default_font_weight, sizeof(default_font_weight));
     memcpy(fonttheme_array[0].impl->theme.font_size, default_font_size, sizeof(default_font_size));
     memcpy(fonttheme_array[0].impl->theme.line_height, default_line_height, sizeof(default_line_height));

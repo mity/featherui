@@ -34,6 +34,7 @@ struct DpiMetrics {
 
     float dpi_factor_x;
     float dpi_factor_y;
+    float text_scale_factor;
 
     TextFont* text_font[FONTTHEME_TEXT_TYPE_COUNT];
     TextFont* icon_font[FONTTHEME_TEXT_TYPE_COUNT];

@@ -18,6 +18,8 @@
 
 #include "uisettings.h"
 #include "hstring_ref.h"
+#include "colortheme.h"
+#include "fonttheme.h"
 
 
 /* mingw-w64 libs miss these GUIDs (even though the headers create references to globals IID_xxxx).
@@ -225,10 +227,29 @@ err_LoadLibraryEx:
 }
 
 
-HRESULT
-uisettings_load(UiSettings* settings)
+void
+uisettings_reload(void)
 {
-    uisettings_load_light_theme_flag(settings);
-    uisettings_load_settings(settings);
+    UiSettings settings;
+
+    uisettings_load_light_theme_flag(&settings);
+    uisettings_load_settings(&settings);
+
+    /* Kick into the interested parties. */
+    colortheme_apply_uisettings(&settings);
+    fonttheme_apply_uisettings(&settings);
+}
+
+
+HRESULT
+uisettings_init(void)
+{
+    uisettings_reload();
     return S_OK;
+}
+
+void
+uisettings_fini(void)
+{
+    /* noop */
 }

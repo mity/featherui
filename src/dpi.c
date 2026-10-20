@@ -51,13 +51,12 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     dpi_metrics->dpi_y = dpi->dpi_y;
     dpi_metrics->dpi_factor_x = (float)dpi->dpi_x / 96.0;
     dpi_metrics->dpi_factor_y = (float)dpi->dpi_y / 96.0;
-
-    // TODO: add support for accessibility text size factor.
+    dpi_metrics->text_scale_factor = font_theme->text_scale_factor;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
         dpi_metrics->text_font[i] = text_create_font_ex(
                 font_theme->text_font_name,
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y,
+                font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
                 TEXT_FONT_STRETCH_NORMAL
@@ -65,7 +64,7 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
 
         dpi_metrics->icon_font[i] = text_create_font_ex(
                 font_theme->icon_font_name,
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y,
+                font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
                 TEXT_FONT_STRETCH_NORMAL
@@ -73,7 +72,7 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
 
         // TODO: error handling?
 
-        dpi_metrics->line_height[i] = dpi_metrics->dpi_factor_y * font_theme->line_height[i];
+        dpi_metrics->line_height[i] = dpi_metrics->dpi_factor_y * font_theme->line_height[i] * dpi_metrics->text_scale_factor;
     }
 
     impl->metrics[theme_id] = dpi_metrics;
