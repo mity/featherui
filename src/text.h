@@ -71,9 +71,17 @@ enum TextFontStretch {
 };
 
 
-TextFont* text_create_font(const WCHAR* name, float size);
-TextFont* text_create_font_ex(const WCHAR* name, float size,
-            TextFontWeight weight, TextFontStyle style, TextFontStretch stretch);
+/* @param logical_size: A base font size which assumes no zoom, scaling, and DPI 96.0f.
+ * @param scaled_size: Size scaled for the DPI, accessibility or zoom or whatever.
+ *
+ * Note for testing: logical_size is ignored on older DWrite versions where
+ * optical sizing is not available.
+ */
+TextFont* text_create_font_ex(const WCHAR* name, float logical_size, float scaled_size,
+            TextFontWeight weight, TextFontStyle style, TextFontStretch stretch,
+            const WCHAR* locale_name);
+TextFont* text_create_font(const WCHAR* name, float logical_size, float scaled_size,
+            const WCHAR* locale_name);
 void text_destroy_font(TextFont* font);
 
 

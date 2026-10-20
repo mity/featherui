@@ -56,18 +56,22 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
         dpi_metrics->text_font[i] = text_create_font_ex(
                 font_theme->text_font_name,
+                font_theme->font_size[i],
                 font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL
+                TEXT_FONT_STRETCH_NORMAL,
+                font_theme->locale_name
         );
 
         dpi_metrics->icon_font[i] = text_create_font_ex(
                 font_theme->icon_font_name,
+                font_theme->font_size[i],
                 font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL
+                TEXT_FONT_STRETCH_NORMAL,
+                font_theme->locale_name
         );
 
         // TODO: error handling?

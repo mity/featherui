@@ -19,29 +19,49 @@
 
 static const GUID x_IID_IDWriteFactory3 =
         {0x9a1b41c3,0xd3bb,0x466a,{0x87,0xfc,0xfe,0x67,0x55,0x6a,0x3b,0x65}};
+static const GUID x_IID_IDWriteFactory6 =
+        {0xf3744d80,0x21f7,0x42eb,{0xb3,0x5d,0x99,0x5b,0xc7,0x2f,0xc2,0x23}};
 static const GUID x_IID_IDWriteTextFormat1 =
         {0x5f174b49,0x0d8b,0x4cfb,{0x8b,0xca,0xf1,0xcc,0xe9,0xd0,0x6c,0x67}};
 
 const WCHAR* text_default_text_font_name = NULL;
 const WCHAR* text_default_icon_font_name = NULL;
 
-static IDWriteFactory3* dwrite_factory = NULL;
+static IDWriteFactory3* dwrite_factory3 = NULL;     /* Required */
+static IDWriteFactory6* dwrite_factory6 = NULL;     /* Optional */
 static IDWriteFontFallback* dwrite_font_fallback = NULL;
 
 
 TextFont*
-text_create_font_ex(const WCHAR* name, float size,
-        TextFontWeight weight, TextFontStyle style, TextFontStretch stretch)
+text_create_font_ex(const WCHAR* name, float logical_size, float scaled_size,
+        TextFontWeight weight, TextFontStyle style, TextFontStretch stretch,
+        const WCHAR* locale_name)
 {
     IDWriteTextFormat* text_format;
     HRESULT hr = E_FAIL;
 
-    hr = IDWriteFactory3_CreateTextFormat(dwrite_factory, name, NULL,
-                (DWRITE_FONT_WEIGHT) weight, (DWRITE_FONT_STYLE) style,
-                (DWRITE_FONT_STRETCH) stretch, size, fe_locale_name, &text_format);
-    if(FAILED(hr)) {
-        XTRACE_HR("IDWriteFactory3::CreateTextFormat()");
-        return NULL;
+    if(dwrite_factory6 != NULL) {
+        DWRITE_FONT_AXIS_VALUE axis_values[2] = {
+            { DWRITE_FONT_AXIS_TAG_WEIGHT, (float) weight },
+            { DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE, logical_size * 0.75 }
+        };
+
+        hr = IDWriteFactory6_CreateTextFormat1(dwrite_factory6, name, NULL,
+                    axis_values, SIZEOF_ARRAY(axis_values), scaled_size,
+                    locale_name, (IDWriteTextFormat3**) &text_format);
+        if(FAILED(hr)) {
+            XTRACE_HR("IDWriteFactory6::CreateTextFormat()");
+            return NULL;
+        }
+    } else {
+        hr = IDWriteFactory3_CreateTextFormat(dwrite_factory3, name, NULL,
+                    (DWRITE_FONT_WEIGHT) weight, (DWRITE_FONT_STYLE) style,
+                    (DWRITE_FONT_STRETCH) stretch, scaled_size, locale_name,
+                    &text_format);
+        if(FAILED(hr)) {
+            XTRACE_HR("IDWriteFactory3::CreateTextFormat()");
+            return NULL;
+        }
     }
 
     if(dwrite_font_fallback != NULL) {
@@ -58,10 +78,11 @@ text_create_font_ex(const WCHAR* name, float size,
 }
 
 TextFont*
-text_create_font(const WCHAR* name, float size)
+text_create_font(const WCHAR* name, float logical_size, float scaled_size, const WCHAR* locale_name)
 {
-    return text_create_font_ex(name, size, TEXT_FONT_WEIGHT_NORMAL,
-                TEXT_FONT_STYLE_NORMAL, TEXT_FONT_STRETCH_NORMAL);
+    return text_create_font_ex(name, logical_size, scaled_size,
+                TEXT_FONT_WEIGHT_NORMAL, TEXT_FONT_STYLE_NORMAL,
+                TEXT_FONT_STRETCH_NORMAL, locale_name);
 }
 
 void
@@ -87,7 +108,7 @@ text_create_layout(const WCHAR* str, UINT str_len, TextFont* font,
     DWRITE_PARAGRAPH_ALIGNMENT vert_align;
     HRESULT hr = E_FAIL;
 
-    hr = IDWriteFactory3_CreateTextLayout(dwrite_factory, str, str_len,
+    hr = IDWriteFactory3_CreateTextLayout(dwrite_factory3, str, str_len,
                 text_format, max_width, max_height, &layout);
     if(FAILED(hr)) {
         XTRACE_HR("IDWriteFactory3::CreateTextLayout()");
@@ -122,7 +143,7 @@ text_create_layout(const WCHAR* str, UINT str_len, TextFont* font,
     }
 
     if(trim != NULL) {
-        hr = IDWriteFactory3_CreateEllipsisTrimmingSign(dwrite_factory, text_format, &trim_sign);
+        hr = IDWriteFactory3_CreateEllipsisTrimmingSign(dwrite_factory3, text_format, &trim_sign);
         if(FAILED(hr))
             XTRACE_HR("IDWriteFactory3::CreateEllipsisTrimmingSign()");
         if(trim_sign != NULL) {
@@ -152,7 +173,7 @@ text_create_rendering_params(HMONITOR mon_handle)
         return NULL;
     }
 
-    hr = IDWriteFactory3_CreateMonitorRenderingParams(dwrite_factory, mon_handle, &params);
+    hr = IDWriteFactory3_CreateMonitorRenderingParams(dwrite_factory3, mon_handle, &params);
     if(FAILED(hr)) {
         XTRACE_HR("IDWriteFactory3::CreateMonitorRenderingParams()");
         return NULL;
@@ -220,21 +241,27 @@ text_init(void)
     HRESULT hr = E_FAIL;
 
     hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &x_IID_IDWriteFactory3,
-                (void**) &dwrite_factory);
+                (void**) &dwrite_factory3);
     if(FAILED(hr)) {
         XTRACE_HR("DWriteCreateFactory() failed.");
         text_fini();
         return hr;
     }
 
-    hr = IDWriteFactory3_GetSystemFontFallback(dwrite_factory, &dwrite_font_fallback);
+    hr = IDWriteFactory3_QueryInterface(dwrite_factory3, &x_IID_IDWriteFactory6, (void**) &dwrite_factory6);
+    if(FAILED(hr)) {
+        XTRACE_HR("IDWriteFactory3::QueryInterface(IID_IDWriteFactory6) failed. Optical sizing is not available.");
+        /* No abort here. */
+    }
+
+    hr = IDWriteFactory3_GetSystemFontFallback(dwrite_factory3, &dwrite_font_fallback);
     if(FAILED(hr)) {
         XTRACE_HR("IDWriteFactory3::GetSystemFontFallback() failed.");
         text_fini();
         return hr;
     }
 
-    hr = IDWriteFactory3_GetSystemFontSet(dwrite_factory, &font_set);
+    hr = IDWriteFactory3_GetSystemFontSet(dwrite_factory3, &font_set);
     if(FAILED(hr)) {
         XTRACE_HR("IDWriteFactory3::GetSystemFontSet() failed.");
         text_fini();
@@ -287,8 +314,12 @@ text_fini(void)
         IDWriteFontFallback_Release(dwrite_font_fallback);
         dwrite_font_fallback = NULL;
     }
-    if(dwrite_factory != NULL) {
-        IDWriteFactory3_Release(dwrite_factory);
-        dwrite_factory = NULL;
+    if(dwrite_factory6 != NULL) {
+        IDWriteFactory6_Release(dwrite_factory6);
+        dwrite_factory6 = NULL;
+    }
+    if(dwrite_factory3 != NULL) {
+        IDWriteFactory3_Release(dwrite_factory3);
+        dwrite_factory3 = NULL;
     }
 }
