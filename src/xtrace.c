@@ -193,8 +193,8 @@ xtrace_msg__(const char* fname, unsigned line, const char* func,
     }
 }
 
-static const size_t dump_n_bytes_per_line = 16;
-static const size_t dump_n_bytes_per_extra_space = 8;
+#define DUMP_N_BYTES_PER_LINE           16
+#define DUMP_N_BYTES_PER_EXTRA_SPACE    8
 
 static void
 xtrace_dump_block(const char* fname, unsigned line, const char* func,
@@ -204,20 +204,20 @@ xtrace_dump_block(const char* fname, unsigned line, const char* func,
     size_t off = 0;
 
     while(off < size) {
-        char buffer[4 * dump_n_bytes_per_line + 64];
+        char buffer[4 * DUMP_N_BYTES_PER_LINE + 64];
         char* ptr = buffer;
         size_t line_off = off;
 
         ptr += sprintf(ptr, "   %08zx:  ", off);
 
         /* Hex output */
-        while(off - line_off < dump_n_bytes_per_line) {
+        while(off - line_off < DUMP_N_BYTES_PER_LINE) {
             if(off < size)
                 ptr += sprintf(ptr, "%02x ", bytes[off]);
             else
                 ptr += sprintf(ptr, "   ");
             off++;
-            if(off % dump_n_bytes_per_extra_space == 0)
+            if(off % DUMP_N_BYTES_PER_EXTRA_SPACE == 0)
                 ptr += sprintf(ptr, "  ");
         }
 
@@ -225,7 +225,7 @@ xtrace_dump_block(const char* fname, unsigned line, const char* func,
         ptr += sprintf(ptr, "| ");
 
         /* Char output */
-        while(off - line_off < dump_n_bytes_per_line) {
+        while(off - line_off < DUMP_N_BYTES_PER_LINE) {
             if(off < size)
                 ptr += sprintf(ptr, "%c",
                         (iscntrl(bytes[off]) || (uint8_t)bytes[off] >= 0x80 ? '.' : bytes[off]));
@@ -264,14 +264,14 @@ xtrace_dump__(const char* fname, unsigned line, const char* func,
     /* We're actually little more generous as it makes no sense to
      * skip too few bytes and replace them with longer "Skipping..." message
      */
-    if(size > XTRACE_MAX_DUMP_SIZE + dump_n_bytes_per_line * 4) {
+    if(size > XTRACE_MAX_DUMP_SIZE + DUMP_N_BYTES_PER_LINE * 4) {
         size_t head_size = XTRACE_MAX_DUMP_SIZE / 2;
         size_t tail_size = XTRACE_MAX_DUMP_SIZE / 2;
 
         /* Make sure head ends and tail begins at a reasonable offsets. */
-        head_size += dump_n_bytes_per_line - 1;
-        head_size -= head_size % dump_n_bytes_per_line;
-        tail_size -= tail_size % dump_n_bytes_per_line;
+        head_size += DUMP_N_BYTES_PER_LINE - 1;
+        head_size -= head_size % DUMP_N_BYTES_PER_LINE;
+        tail_size -= tail_size % DUMP_N_BYTES_PER_LINE;
 
         xtrace_dump_block(fname, line, func, flags, addr, head_size);
 
@@ -280,7 +280,7 @@ xtrace_dump__(const char* fname, unsigned line, const char* func,
                     size - head_size - tail_size);
 
         xtrace_dump_block(fname, line, func, flags,
-                    addr + size - tail_size, tail_size);
+                    (const uint8_t*)addr + size - tail_size, tail_size);
     } else {
         xtrace_dump_block(fname, line, func, flags, addr, size);
     }

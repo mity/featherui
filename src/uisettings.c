@@ -12,8 +12,6 @@
  * - Commercial license; see LICENSE.commercial.md.
  */
 
-#define WIDL_using_Windows_Foundation
-#define WIDL_using_Windows_UI_ViewManagement
 #include <roapi.h>
 #include <windows.foundation.h>
 #include <windows.ui.viewmanagement.h>
@@ -28,6 +26,29 @@ static const GUID x_IID_IUISettings  = {0x85361600,0x1c63,0x4627,{0xbc,0xb1,0x3a
 static const GUID x_IID_IUISettings2 = {0xbad82401,0x2721,0x44f9,{0xbb,0x91,0x2b,0xb2,0x28,0xbe,0x44,0x2f}};
 static const GUID x_IID_IUISettings3 = {0x03021be4,0x5254,0x4781,{0x81,0x94,0x51,0x68,0xf7,0xd0,0x6d,0x7b}};
 static const GUID x_IID_IUISettings4 = {0x52bb3002,0x919b,0x4d6b,{0x9b,0x78,0x8d,0xd6,0x6f,0xf4,0xb9,0x3b}};
+
+
+/* Wrapper macros to get rid of those namespace decorations. */
+#define Foundation(name)                    __x_ABI_CWindows_CFoundation_C ## name
+#define UI_ViewManagement(name)             __x_ABI_CWindows_CUI_CViewManagement_C ## name
+
+#define Size                                Foundation(Size)
+#define HandPreference                      UI_ViewManagement(HandPreference)
+
+#define IUISettings                         UI_ViewManagement(IUISettings)
+#define IUISettings_get_HandPreference      UI_ViewManagement(IUISettings_get_HandPreference)
+#define IUISettings_Release                 UI_ViewManagement(IUISettings_Release)
+
+#define IUISettings2                        UI_ViewManagement(IUISettings2)
+#define IUISettings2_get_TextScaleFactor    UI_ViewManagement(IUISettings2_get_TextScaleFactor)
+#define IUISettings2_Release                UI_ViewManagement(IUISettings2_Release)
+
+#define IUISettings3                        UI_ViewManagement(IUISettings3)
+#define IUISettings3_Release                UI_ViewManagement(IUISettings3_Release)
+
+#define IUISettings4                        UI_ViewManagement(IUISettings4)
+#define IUISettings4_get_AdvancedEffectsEnabled     UI_ViewManagement(IUISettings4_get_AdvancedEffectsEnabled)
+#define IUISettings4_Release                UI_ViewManagement(IUISettings4_Release)
 
 
 /* The setting which determines whether to use light or dark theme lives in
