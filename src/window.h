@@ -19,6 +19,7 @@
 #include "gfx.h"
 #include "monitor.h"
 #include "dpi.h"
+#include "libex/list.h"
 
 
 /* This serves as an abstraction of any top-level window (AppWindow, dialogs,
@@ -43,7 +44,11 @@ struct Window {
     const MonitorInfo* mon_info;
     const DpiInfo* dpi_info;
     GfxCanvas* canvas;
+    ListNode node;
 };
+
+
+extern List window_list;
 
 
 /* Other window implementations need to call the following functions from
@@ -53,6 +58,10 @@ void window_WM_WINDOWPOSCHANGED(Window* win, const WINDOWPOS* pos);
 void window_WM_DPICHANGED(Window* win, UINT dpi_x, UINT dpi_y, const RECT* rect_hint);
 LRESULT window_WM_NCCREATE(Window* win, HWND hwnd, const CREATESTRUCT* cs);
 void window_WM_NCDESTROY(Window* win);
+
+
+HRESULT window_init(void);
+void window_fini(void);
 
 
 #endif  /* FE_WINDOW_H */

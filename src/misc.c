@@ -25,6 +25,7 @@
 #include "monitor.h"
 #include "system.h"
 #include "text.h"
+#include "window.h"
 
 
 HMODULE dll_feather = NULL;
@@ -59,6 +60,7 @@ static const struct {
     MODULE(fonttheme_init,  fonttheme_fini),
     MODULE(monitor_init,    monitor_fini),
     MODULE(dpi_init,        dpi_fini),
+    MODULE(window_init,     window_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE
