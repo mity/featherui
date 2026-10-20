@@ -129,7 +129,7 @@ err_GetProcAddress_RtlGetVersion:
 }
 
 static void
-report_preferred_languages(bool system)
+report_preferred_languages(BOOL system)
 {
     WCHAR* buffer;
     WCHAR* ptr;
@@ -277,8 +277,8 @@ system_init(void)
 
 #ifdef DEBUG
     report_sys_info();
-    report_preferred_languages(true);
-    report_preferred_languages(false);
+    report_preferred_languages(TRUE);
+    report_preferred_languages(FALSE);
 #endif
 
     wc.cbSize = sizeof(wc);
