@@ -68,6 +68,12 @@ appwindow_WM_PAINT(AppWindow* app_win)
 
         y0 = 10.0f;
         for(i = 0; i < 9; i++) {
+            layout = text_create_layout(L"\xe701", 1, metrics->icon_font[i],
+                            10000.0f, 10000.0f,
+                            TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);
+            gfx_draw_text_layout(app_win->win.canvas, 100.0f, y0, layout, gfx_rgb(0, 0, 0));
+            text_destroy_layout(layout);
+
             layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
                             metrics->text_font[i], 10000.0f, 10000.0f,
                             TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);

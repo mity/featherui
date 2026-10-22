@@ -35,12 +35,12 @@ static IDWriteFontFallback* dwrite_font_fallback = NULL;
 TextFont*
 text_create_font_ex(const WCHAR* name, float logical_size, float scaled_size,
         TextFontWeight weight, TextFontStyle style, TextFontStretch stretch,
-        const WCHAR* locale_name)
+        const WCHAR* locale_name, BOOL allow_optical_sizing)
 {
     IDWriteTextFormat* text_format;
     HRESULT hr = E_FAIL;
 
-    if(dwrite_factory6 != NULL) {
+    if(allow_optical_sizing  &&  dwrite_factory6 != NULL) {
         DWRITE_FONT_AXIS_VALUE axis_values[2] = {
             { DWRITE_FONT_AXIS_TAG_WEIGHT, (float) weight },
             { DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE, logical_size * 0.75 }
@@ -82,7 +82,7 @@ text_create_font(const WCHAR* name, float logical_size, float scaled_size, const
 {
     return text_create_font_ex(name, logical_size, scaled_size,
                 TEXT_FONT_WEIGHT_NORMAL, TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL, locale_name);
+                TEXT_FONT_STRETCH_NORMAL, locale_name, TRUE);
 }
 
 void

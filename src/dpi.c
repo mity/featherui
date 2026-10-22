@@ -61,7 +61,8 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
                 TEXT_FONT_STRETCH_NORMAL,
-                font_theme->locale_name
+                font_theme->locale_name,
+                TRUE
         );
 
         dpi_metrics->icon_font[i] = text_create_font_ex(
@@ -71,7 +72,8 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
                 font_theme->font_weight[i],
                 TEXT_FONT_STYLE_NORMAL,
                 TEXT_FONT_STRETCH_NORMAL,
-                font_theme->locale_name
+                font_theme->locale_name,
+                FALSE
         );
 
         // TODO: error handling?

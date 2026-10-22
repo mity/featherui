@@ -79,7 +79,7 @@ enum TextFontStretch {
  */
 TextFont* text_create_font_ex(const WCHAR* name, float logical_size, float scaled_size,
             TextFontWeight weight, TextFontStyle style, TextFontStretch stretch,
-            const WCHAR* locale_name);
+            const WCHAR* locale_name, BOOL allow_optical_sizing);
 TextFont* text_create_font(const WCHAR* name, float logical_size, float scaled_size,
             const WCHAR* locale_name);
 void text_destroy_font(TextFont* font);
