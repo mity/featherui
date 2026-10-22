@@ -111,10 +111,9 @@ window_init(void)
 void
 window_fini(void)
 {
-    ListNode* node;
-
-    LIST_FOR_EACH(&window_list, node) {
-        Window* win = LIST_DATA(node, Window, node);
+    while(!list_is_empty(&window_list)) {
+        ListNode* head = list_head(&window_list);
+        Window* win = LIST_DATA(head, Window, node);
         DestroyWindow(win->hwnd);
     }
 }
