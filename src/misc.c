@@ -21,6 +21,7 @@
 #include "colortheme.h"
 #include "dpi.h"
 #include "fonttheme.h"
+#include "glyphicon.h"
 #include "gfx.h"
 #include "monitor.h"
 #include "system.h"
@@ -60,6 +61,7 @@ static const struct {
     MODULE(uisettings_init, uisettings_fini),
     MODULE(colortheme_init, colortheme_fini),
     MODULE(fonttheme_init,  fonttheme_fini),
+    MODULE(glyphicon_init,  glyphicon_fini),
     MODULE(monitor_init,    monitor_fini),
     MODULE(dpi_init,        dpi_fini),
     MODULE(window_init,     window_fini),

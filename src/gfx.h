@@ -132,6 +132,7 @@ typedef struct GfxBrush GfxBrush;
 typedef struct Window Window;
 typedef struct TextRenderingParams TextRenderingParams;
 typedef struct TextLayout TextLayout;
+typedef UINT16 GlyphIconId;
 
 
 GfxCanvas* gfx_create_mem_canvas(UINT width, UINT height);
@@ -161,6 +162,7 @@ void gfx_fill_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, Gf
 void gfx_fill_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1, float rx, float ry, GfxColor color);
 
 /* Text rendering */
+void gfx_draw_glyph_icon(GfxCanvas* canvas, float cx, float cy, float size, GlyphIconId id, GfxColor color);
 void gfx_draw_text_layout(GfxCanvas* canvas, float x0, float y0, TextLayout* layout, GfxColor color);
 
 /* This may be called when we suspect that this process won't need to do

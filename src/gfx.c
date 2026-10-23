@@ -12,6 +12,8 @@
  * - Commercial license; see LICENSE.commercial.md.
  */
 
+#include <math.h>
+
 #include "gfx.h"
 #include "gfx_internal.h"
 #include "window.h"
@@ -741,6 +743,30 @@ gfx_fill_rounded_rect(GfxCanvas* canvas, float x0, float y0, float x1, float y1,
     ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
     ID2D1DeviceContext_FillRoundedRectangle(canvas->d2d_device_ctx, &d2d_rounded_rect,
                 (ID2D1Brush*) global_ctx.d2d_solid_color_brush);
+}
+
+void
+gfx_draw_glyph_icon(GfxCanvas* canvas, float cx, float cy, float size, GlyphIconId id, GfxColor color)
+{
+    D2D_POINT_2F pt;
+    D2D_COLOR_F d2d_color = D2D_COLOR_INIT(color);
+    DWRITE_GLYPH_RUN run = { 0 };
+
+    if(id == 0)
+        return;
+
+    run.fontFace = (IDWriteFontFace*) glyphicon_font_face;
+    run.fontEmSize = size;
+    run.glyphCount = 1;
+    run.glyphIndices = &id;
+
+    pt.x = roundf(cx - 0.5f * size);
+    pt.y = roundf(cy + 0.5f * size);
+
+    ID2D1SolidColorBrush_SetColor(global_ctx.d2d_solid_color_brush, &d2d_color);
+    ID2D1DeviceContext_DrawGlyphRun(canvas->d2d_device_ctx, pt, &run,
+                (ID2D1Brush*) global_ctx.d2d_solid_color_brush,
+                DWRITE_MEASURING_MODE_NATURAL);
 }
 
 void

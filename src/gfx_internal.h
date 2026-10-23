@@ -52,5 +52,7 @@ extern IDWriteFactory6* dwrite_factory6;
 
 extern IDWriteFontFallback* dwrite_font_fallback;
 
+extern IDWriteFontFace3* glyphicon_font_face;
+
 
 #endif  /* GFX_INTERNAL_H */
