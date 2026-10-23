@@ -16,73 +16,11 @@
 #define FE_TEXT_H
 
 #include "misc.h"
+#include "font.h"
 
 
-typedef struct TextFont TextFont;
 typedef struct TextLayout TextLayout;
 typedef struct TextRenderingParams TextRenderingParams;
-
-
-extern const WCHAR* text_default_text_font_name;
-extern const WCHAR* text_default_icon_font_name;
-
-
-typedef enum TextFontWeight TextFontWeight;
-enum TextFontWeight {
-    TEXT_FONT_WEIGHT_THIN = 100,
-    TEXT_FONT_WEIGHT_EXTRA_LIGHT = 200,
-    TEXT_FONT_WEIGHT_ULTRA_LIGHT = 200,
-    TEXT_FONT_WEIGHT_LIGHT = 300,
-    TEXT_FONT_WEIGHT_SEMI_LIGHT = 350,
-    TEXT_FONT_WEIGHT_NORMAL = 400,
-    TEXT_FONT_WEIGHT_REGULAR = 400,
-    TEXT_FONT_WEIGHT_MEDIUM = 500,
-    TEXT_FONT_WEIGHT_DEMI_BOLD = 600,
-    TEXT_FONT_WEIGHT_SEMI_BOLD = 600,
-    TEXT_FONT_WEIGHT_BOLD = 700,
-    TEXT_FONT_WEIGHT_EXTRA_BOLD = 800,
-    TEXT_FONT_WEIGHT_ULTRA_BOLD = 800,
-    TEXT_FONT_WEIGHT_BLACK = 900,
-    TEXT_FONT_WEIGHT_HEAVY = 900,
-    TEXT_FONT_WEIGHT_EXTRA_BLACK = 950,
-    TEXT_FONT_WEIGHT_ULTRA_BLACK = 950
-};
-
-typedef enum TextFontStyle TextFontStyle;
-enum TextFontStyle {
-    TEXT_FONT_STYLE_NORMAL = 0,
-    TEXT_FONT_STYLE_OBLIQUE = 1,
-    TEXT_FONT_STYLE_ITALIC = 2
-};
-
-typedef enum TextFontStretch TextFontStretch;
-enum TextFontStretch {
-    TEXT_FONT_STRETCH_UNDEFINED = 0,
-    TEXT_FONT_STRETCH_ULTRA_CONDENSED = 1,
-    TEXT_FONT_STRETCH_EXTRA_CONDENSED = 2,
-    TEXT_FONT_STRETCH_CONDENSED = 3,
-    TEXT_FONT_STRETCH_SEMI_CONDENSED = 4,
-    TEXT_FONT_STRETCH_NORMAL = 5,
-    TEXT_FONT_STRETCH_MEDIUM = 5,
-    TEXT_FONT_STRETCH_SEMI_EXPANDED = 6,
-    TEXT_FONT_STRETCH_EXPANDED = 7,
-    TEXT_FONT_STRETCH_EXTRA_EXPANDED = 8,
-    TEXT_FONT_STRETCH_ULTRA_EXPANDED = 9
-};
-
-
-/* @param logical_size: A base font size which assumes no zoom, scaling, and DPI 96.0f.
- * @param scaled_size: Size scaled for the DPI, accessibility or zoom or whatever.
- *
- * Note for testing: logical_size is ignored on older DWrite versions where
- * optical sizing is not available.
- */
-TextFont* text_create_font_ex(const WCHAR* name, float logical_size, float scaled_size,
-            TextFontWeight weight, TextFontStyle style, TextFontStretch stretch,
-            const WCHAR* locale_name, BOOL allow_optical_sizing);
-TextFont* text_create_font(const WCHAR* name, float logical_size, float scaled_size,
-            const WCHAR* locale_name);
-void text_destroy_font(TextFont* font);
 
 
 #define TEXT_ALIGN_LEAD         0x0000
@@ -102,7 +40,7 @@ void text_destroy_font(TextFont* font);
 #define TEXT_VALIGN_MASK        (TEXT_VALIGN_TOP | TEXT_VALIGN_CENTER | TEXT_VALIGN_BOTTOM)
 #define TEXT_TRIM_MASK          (TEXT_TRIM_NONE | TEXT_TRIM_END | TEXT_TRIM_WORD | TEXT_TRIM_PATH)
 
-TextLayout* text_create_layout(const WCHAR* str, UINT str_len, TextFont* font,
+TextLayout* text_create_layout(const WCHAR* str, UINT str_len, Font* font,
             float max_width, float max_height, DWORD flags);
 void text_destroy_layout(TextLayout* layout);
 

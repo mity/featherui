@@ -12,6 +12,7 @@
  * - Commercial license; see LICENSE.commercial.md.
  */
 
+#include <math.h>
 #include "dpi.h"
 #include "libex/list.h"
 
@@ -34,6 +35,7 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     DpiImpl* impl = CONTAINEROF(dpi, DpiImpl, info);
     DpiMetrics* dpi_metrics = impl->metrics[theme_id];
     const FontTheme* font_theme;
+    float factor;
     unsigned i;
 
     if(dpi_metrics != NULL)
@@ -51,34 +53,32 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     dpi_metrics->dpi_y = dpi->dpi_y;
     dpi_metrics->dpi_factor_x = (float)dpi->dpi_x / 96.0;
     dpi_metrics->dpi_factor_y = (float)dpi->dpi_y / 96.0;
-    dpi_metrics->text_scale_factor = font_theme->text_scale_factor;
+    dpi_metrics->accessibility_scale_factor = font_theme->accessibility_scale_factor;
+
+    factor = dpi_metrics->dpi_factor_y * dpi_metrics->accessibility_scale_factor;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        dpi_metrics->text_font[i] = text_create_font_ex(
-                font_theme->text_font_name,
-                font_theme->font_size[i],
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
-                font_theme->font_weight[i],
-                TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL,
-                font_theme->locale_name,
-                TRUE
-        );
+        FontParams text_font_params = { 0 };
+        FontParams icon_font_params = { 0 };
 
-        dpi_metrics->icon_font[i] = text_create_font_ex(
-                font_theme->icon_font_name,
-                font_theme->font_size[i],
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y * dpi_metrics->text_scale_factor,
-                font_theme->font_weight[i],
-                TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL,
-                font_theme->locale_name,
-                FALSE
-        );
+        text_font_params.locale_name = font_theme->locale_name;
+        text_font_params.name = font_theme->text_font_name;
+        text_font_params.logical_size = font_theme->text_logical_size[i];
+        text_font_params.size = font_theme->text_logical_size[i] * factor;
+        text_font_params.weight = font_theme->text_weight[i];
+        text_font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
 
-        // TODO: error handling?
+        icon_font_params.locale_name = font_theme->locale_name;
+        icon_font_params.name = font_theme->icon_font_name;
+        icon_font_params.logical_size = font_theme->icon_logical_size[i];
+        icon_font_params.size = font_theme->icon_logical_size[i] * factor;
+        icon_font_params.weight = font_theme->icon_weight[i];
+        icon_font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
+        icon_font_params.disable_optical_sizing = TRUE;
 
-        dpi_metrics->line_height[i] = dpi_metrics->dpi_factor_y * font_theme->line_height[i] * dpi_metrics->text_scale_factor;
+        dpi_metrics->text_font[i] = font_create(&text_font_params);
+        dpi_metrics->icon_font[i] = font_create(&icon_font_params);
+        dpi_metrics->line_height[i] = roundf(font_theme->line_height[i] * factor);
     }
 
     impl->metrics[theme_id] = dpi_metrics;
@@ -92,9 +92,9 @@ dpi_destroy_metrics(DpiMetrics* metrics)
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
         if(metrics->text_font[i] != NULL)
-            text_destroy_font(metrics->text_font[i]);
+            font_destroy(metrics->text_font[i]);
         if(metrics->icon_font[i] != NULL)
-            text_destroy_font(metrics->icon_font[i]);
+            font_destroy(metrics->icon_font[i]);
     }
 
     fe_free(metrics);

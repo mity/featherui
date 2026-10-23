@@ -10,6 +10,7 @@ set(SOURCES
     appwindow.c     appwindow.h             ../include/feather/appwindow.h
     colortheme.c    colortheme.h
     dpi.c           dpi.h
+    font.c          font.h
     fonttheme.c     fonttheme.h
     gfx.c           gfx.h gfx_internal.h
                     hstring_ref.h

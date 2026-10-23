@@ -149,7 +149,6 @@ HRESULT
 colortheme_init(void)
 {
     ColorThemeId id;
-    UiSettings ui_settings;
 
     for(id = 0; id < COLORTHEME_MAX_COUNT; id++)
         colortheme_array[id].impl = NULL;
@@ -172,13 +171,8 @@ colortheme_init(void)
 
     // TODO: mark everything in them as "explicitly set".
 
-    if(ui_settings.use_light_theme) {
-        colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_LIGHT].impl;
-        colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_LIGHT;
-    } else {
-        colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_DARK].impl;
-        colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_DARK;
-    }
+    colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_LIGHT].impl;
+    colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_LIGHT;
     colortheme_array[COLORTHEME_ID_SYSTEM].is_readonly = TRUE;
 
     colortheme_default_id = COLORTHEME_ID_SYSTEM;
