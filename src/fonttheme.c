@@ -62,42 +62,30 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
 
     static const struct {
         float line_height;
-
-        float text_logical_size;
-        FontWeight text_weight;
-
-        float icon_logical_size;
-        FontWeight icon_weight;
+        float logical_size;
+        FontWeight weight;
     } font_map[FONTTHEME_TEXT_TYPE_COUNT] = {
         /* Text font and line height sizes are based on values used by
          * WinUI 3 with Segoe UI or Segoe UI Variable fonts. For other fonts
          * we scale the lineHeight below to provide similar "fluent" UI look.
-         * (See WinUI 3 Gallery >> Typography)
-         *
-         * The icon font is based on values recommended for the
-         * Segoe Fluent Icons and Segoe MDL2 Assets fonts.
-         * (See https://learn.microsoft.com/en-us/windows/apps/design/iconography/segoe-fluent-icons-font)
-         */
-        { 16.0f, 12.0f, FONT_WEIGHT_REGULAR,   12.0f, FONT_WEIGHT_REGULAR },
-        { 20.0f, 14.0f, FONT_WEIGHT_REGULAR,   16.0f, FONT_WEIGHT_REGULAR },
-        { 20.0f, 14.0f, FONT_WEIGHT_SEMI_BOLD, 16.0f, FONT_WEIGHT_REGULAR },
-        { 24.0f, 18.0f, FONT_WEIGHT_REGULAR,   20.0f, FONT_WEIGHT_REGULAR },
-        { 24.0f, 18.0f, FONT_WEIGHT_SEMI_BOLD, 20.0f, FONT_WEIGHT_REGULAR },
-        { 28.0f, 20.0f, FONT_WEIGHT_SEMI_BOLD, 24.0f, FONT_WEIGHT_REGULAR },
-        { 36.0f, 28.0f, FONT_WEIGHT_SEMI_BOLD, 32.0f, FONT_WEIGHT_REGULAR },
-        { 52.0f, 40.0f, FONT_WEIGHT_SEMI_BOLD, 48.0f, FONT_WEIGHT_REGULAR },
-        { 92.0f, 68.0f, FONT_WEIGHT_SEMI_BOLD, 64.0f, FONT_WEIGHT_REGULAR }
+         * (See WinUI 3 Gallery >> Typography) */
+        { 16.0f, 12.0f, FONT_WEIGHT_REGULAR },
+        { 20.0f, 14.0f, FONT_WEIGHT_REGULAR },
+        { 20.0f, 14.0f, FONT_WEIGHT_SEMI_BOLD },
+        { 24.0f, 18.0f, FONT_WEIGHT_REGULAR },
+        { 24.0f, 18.0f, FONT_WEIGHT_SEMI_BOLD },
+        { 28.0f, 20.0f, FONT_WEIGHT_SEMI_BOLD },
+        { 36.0f, 28.0f, FONT_WEIGHT_SEMI_BOLD },
+        { 52.0f, 40.0f, FONT_WEIGHT_SEMI_BOLD },
+        { 92.0f, 68.0f, FONT_WEIGHT_SEMI_BOLD }
     };
 
     FontThemeId id;
     const WCHAR* font_name_list;
-    const WCHAR* font_name;
-    const WCHAR* text_font_name = NULL;
-    const WCHAR* icon_font_name = NULL;
+    const WCHAR* font_name = NULL;
     HRESULT hr;
     FontMetrics metrics_regular = { 0 };
     FontMetrics metrics_semibold = { 0 };
-    FontMetrics metrics_icon = { 0 };
     FontTheme* theme;
     size_t strsize;
     WCHAR* str_ptr;
@@ -137,7 +125,7 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
             break;
     }
 
-    /* Find first working text font from the list. */
+    /* Find first working font from the list. */
     for(font_name = font_name_list;
         font_name[0] != L'\0';
         font_name += wcslen(font_name) + 1)
@@ -162,32 +150,11 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
         XTRACE_E("No font suitable for the locale found.");
         return E_FAIL;
     }
-    text_font_name = font_name;
-
-    /* Find first working icon font from the list.
-     * Unlike above, we treat this as optional. */
-    font_name_list = L"Segoe Fluent Icons\0Segoe MDL2 Assets\0";
-    for(font_name = font_name_list;
-        font_name[0] != L'\0';
-        font_name += wcslen(font_name) + 1)
-    {
-        FontParams font_params = { 0 };
-
-        font_params.name = font_name;
-        font_params.weight = FONT_WEIGHT_REGULAR;
-        font_params.optional_mask |= FONT_PARAMS_WEIGHT;
-        hr = font_get_metrics(&font_params, &metrics_icon);
-        if(FAILED(hr))
-            XTRACE_HR("font_get_metrics(%ls)", font_name);
-        if(hr == S_OK)
-            break;
-    }
-    icon_font_name = font_name;
 
     /* font_map[i].line_height comes from WinUI 3 Gallery >> Typography
      * and is only for Segoe UI font family. For other font(s) we need to do
      * a fix-up to preserve the fluent UI experience. */
-    need_line_height_fixup = (wcsncmp(text_font_name, L"Segoe UI", 8) != 0);
+    need_line_height_fixup = (wcsncmp(font_name, L"Segoe UI", 8) != 0);
     if(need_line_height_fixup) {
         FontParams font_params = { 0 };
 
@@ -217,8 +184,7 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
     /* Finally ready to allocate. */
     strsize = 0;
     strsize += (locale_name != NULL) ? wcslen(locale_name) + 1 : 0;
-    strsize += (text_font_name != NULL) ? wcslen(text_font_name) + 1 : 0;
-    strsize += (icon_font_name != NULL) ? wcslen(icon_font_name) + 1 : 0;
+    strsize += (font_name != NULL) ? wcslen(font_name) + 1 : 0;
     theme = (FontTheme*) fe_malloc(sizeof(FontTheme) + 3 * sizeof(FontMetrics) + strsize * sizeof(WCHAR));
     if(theme == NULL) {
         XTRACE_E("malloc() failed.");
@@ -227,7 +193,6 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
 
     memcpy(&theme->font_metrics[0], &metrics_regular, sizeof(FontMetrics));
     memcpy(&theme->font_metrics[1], &metrics_semibold, sizeof(FontMetrics));
-    memcpy(&theme->font_metrics[2], &metrics_icon, sizeof(FontMetrics));
 
     str_ptr = (WCHAR*)(&theme->font_metrics[3]);
     if(locale_name != NULL) {
@@ -237,27 +202,19 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
     } else {
         theme->locale_name = NULL;
     }
-    if(text_font_name != NULL) {
-        wcscpy(str_ptr, text_font_name);
-        theme->text_font_name = str_ptr;
+    if(font_name != NULL) {
+        wcscpy(str_ptr, font_name);
+        theme->font_name = str_ptr;
         str_ptr += wcslen(str_ptr)+1;
     } else {
-        theme->text_font_name = NULL;
-    }
-    if(icon_font_name != NULL) {
-        wcscpy(str_ptr, icon_font_name);
-        theme->icon_font_name = str_ptr;
-        str_ptr += wcslen(str_ptr)+1;
-    } else {
-        theme->icon_font_name = NULL;
+        theme->font_name = NULL;
     }
 
     theme->accessibility_scale_factor = fontheme_accessibility_scale_factor;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        ASSERT(font_map[i].text_weight == FONT_WEIGHT_REGULAR ||
-               font_map[i].text_weight == FONT_WEIGHT_SEMI_BOLD);
-        ASSERT(font_map[i].icon_weight == FONT_WEIGHT_REGULAR);
+        ASSERT(font_map[i].weight == FONT_WEIGHT_REGULAR ||
+               font_map[i].weight == FONT_WEIGHT_SEMI_BOLD);
 
         theme->line_height[i] = font_map[i].line_height;
 
@@ -272,9 +229,9 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
          * ascent + descent.)
          */
         if(need_line_height_fixup) {
-            FontMetrics* metrics_segoe = (font_map[i].text_weight == FONT_WEIGHT_REGULAR)
+            FontMetrics* metrics_segoe = (font_map[i].weight == FONT_WEIGHT_REGULAR)
                         ? &metrics_segoe_regular : &metrics_segoe_semibold;
-            FontMetrics* metrics = (font_map[i].text_weight == FONT_WEIGHT_REGULAR)
+            FontMetrics* metrics = (font_map[i].weight == FONT_WEIGHT_REGULAR)
                         ? &metrics_regular : &metrics_semibold;
             float optical_height_segoe;
             float optical_height;
@@ -294,13 +251,9 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
             theme->line_height[i] *= optical_height / optical_height_segoe;
         }
 
-        theme->text_logical_size[i] = font_map[i].text_logical_size;
-        theme->text_weight[i] = font_map[i].text_weight;
-        theme->text_metrics_index[i] = (font_map[i].text_weight == FONT_WEIGHT_REGULAR) ? 0 : 1;
-
-        theme->icon_logical_size[i] = font_map[i].icon_logical_size;
-        theme->icon_weight[i] = FONT_WEIGHT_REGULAR;
-        theme->icon_metrics_index[i] = 2;
+        theme->logical_size[i] = font_map[i].logical_size;
+        theme->weight[i] = font_map[i].weight;
+        theme->metrics_index[i] = (font_map[i].weight == FONT_WEIGHT_REGULAR) ? 0 : 1;
     }
 
     /* Success */

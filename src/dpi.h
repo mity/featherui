@@ -36,8 +36,7 @@ struct DpiMetrics {
     float dpi_factor_y;
     float accessibility_scale_factor;
 
-    Font* text_font[FONTTHEME_TEXT_TYPE_COUNT];
-    Font* icon_font[FONTTHEME_TEXT_TYPE_COUNT];
+    Font* font[FONTTHEME_TEXT_TYPE_COUNT];
     float line_height[FONTTHEME_TEXT_TYPE_COUNT];
 };
 

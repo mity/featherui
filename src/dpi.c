@@ -58,26 +58,16 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     factor = dpi_metrics->dpi_factor_y * dpi_metrics->accessibility_scale_factor;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        FontParams text_font_params = { 0 };
-        FontParams icon_font_params = { 0 };
+        FontParams font_params = { 0 };
 
-        text_font_params.locale_name = font_theme->locale_name;
-        text_font_params.name = font_theme->text_font_name;
-        text_font_params.logical_size = font_theme->text_logical_size[i];
-        text_font_params.size = font_theme->text_logical_size[i] * factor;
-        text_font_params.weight = font_theme->text_weight[i];
-        text_font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
+        font_params.locale_name = font_theme->locale_name;
+        font_params.name = font_theme->font_name;
+        font_params.logical_size = font_theme->logical_size[i];
+        font_params.size = font_theme->logical_size[i] * factor;
+        font_params.weight = font_theme->weight[i];
+        font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
 
-        icon_font_params.locale_name = font_theme->locale_name;
-        icon_font_params.name = font_theme->icon_font_name;
-        icon_font_params.logical_size = font_theme->icon_logical_size[i];
-        icon_font_params.size = font_theme->icon_logical_size[i] * factor;
-        icon_font_params.weight = font_theme->icon_weight[i];
-        icon_font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
-        icon_font_params.disable_optical_sizing = TRUE;
-
-        dpi_metrics->text_font[i] = font_create(&text_font_params);
-        dpi_metrics->icon_font[i] = font_create(&icon_font_params);
+        dpi_metrics->font[i] = font_create(&font_params);
         dpi_metrics->line_height[i] = roundf(font_theme->line_height[i] * factor);
     }
 
@@ -91,10 +81,8 @@ dpi_destroy_metrics(DpiMetrics* metrics)
     unsigned i;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        if(metrics->text_font[i] != NULL)
-            font_destroy(metrics->text_font[i]);
-        if(metrics->icon_font[i] != NULL)
-            font_destroy(metrics->icon_font[i]);
+        if(metrics->font[i] != NULL)
+            font_destroy(metrics->font[i]);
     }
 
     fe_free(metrics);

@@ -55,15 +55,10 @@ struct FontTheme {
     float accessibility_scale_factor;
     float line_height[FONTTHEME_TEXT_TYPE_COUNT];
 
-    const WCHAR* text_font_name;
-    float text_logical_size[FONTTHEME_TEXT_TYPE_COUNT];
-    FontWeight text_weight[FONTTHEME_TEXT_TYPE_COUNT];
-    BYTE text_metrics_index[FONTTHEME_TEXT_TYPE_COUNT]; /* indexes into font_metrics */
-
-    const WCHAR* icon_font_name;
-    float icon_logical_size[FONTTHEME_TEXT_TYPE_COUNT];
-    FontWeight icon_weight[FONTTHEME_TEXT_TYPE_COUNT];
-    BYTE icon_metrics_index[FONTTHEME_TEXT_TYPE_COUNT]; /* indexes into font_metrics */
+    const WCHAR* font_name;
+    float logical_size[FONTTHEME_TEXT_TYPE_COUNT];
+    FontWeight weight[FONTTHEME_TEXT_TYPE_COUNT];
+    BYTE metrics_index[FONTTHEME_TEXT_TYPE_COUNT]; /* indexes into font_metrics */
 
     FontMetrics font_metrics[];
 };
