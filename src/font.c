@@ -81,6 +81,21 @@ font_get_metrics(const FontParams* params, FontMetrics* metrics)
     metrics->line_gap = fm.lineGap;
     metrics->cap_height = fm.capHeight;
     metrics->x_height = fm.xHeight;
+    XTRACE("%ls metrics: units=%u ascent=%u descent=%u",
+            params->name, (unsigned) fm.designUnitsPerEm,
+            (unsigned) fm.ascent, (unsigned) fm.descent, (unsigned) fm.capHeight);
+
+    /* Heuristics for "optical font size".
+     *
+     * For alphabetic scripts (i.e. if reasonably defined) we use capHeight as
+     * relatively few letters reach above it or below the baseline. If capHeight
+     * is not well-defined (which is usually true for East Asian scripts which
+     * tend to use all the space available, we use ascent + descent as the
+     * approximation. */
+    if(0 < fm.capHeight && fm.capHeight < fm.ascent)
+        metrics->optical_height = fm.capHeight;
+    else
+        metrics->optical_height = fm.ascent + fm.descent;
 
     hr = S_OK;
 
@@ -185,6 +200,13 @@ font_create(const FontParams* params)
             IDWriteTextFormat1_SetFontFallback(text_format1, dwrite_font_fallback);
             IDWriteTextFormat1_Release(text_format1);
         }
+    }
+
+    hr = IDWriteTextFormat_SetLineSpacing(text_format, DWRITE_LINE_SPACING_METHOD_UNIFORM,
+                params->line_height, params->baseline);
+    if(FAILED(hr)) {
+        XTRACE_HR("IDWriteTextFormat::SetLineSpacing()");
+        /* Better to continue here anyway. */
     }
 
     return (Font*) text_format;

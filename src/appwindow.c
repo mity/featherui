@@ -68,21 +68,22 @@ appwindow_WM_PAINT(AppWindow* app_win)
 
         y0 = 10.0f;
         for(i = 0; i < 9; i++) {
-#if 0
-            layout = text_create_layout(L"\xe701", 1, metrics->icon_font[i],
-                            10000.0f, 10000.0f,
-                            TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);
-            gfx_draw_text_layout(app_win->win.canvas, 100.0f, y0, layout, gfx_rgb(0, 0, 0));
-            text_destroy_layout(layout);
-#endif
+            gfx_draw_rect(app_win->win.canvas, 150.0f - 2.5f, y0 - 2.5f,
+                        300.5f + 10 * metrics->line_height[i], y0 + metrics->line_height[i] + 2.5f, gfx_rgb(0, 0, 0));
 
-            layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
-                            metrics->font[i], 10000.0f, 10000.0f,
-                            TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);
+            layout = text_create_layout(L"臺灣是", wcslen(L"臺灣是"),
+                            metrics->font[i], 10000.0f, metrics->line_height[i],
+                            TEXT_ALIGN_LEAD | TEXT_VALIGN_CENTER | TEXT_TRIM_WORD);
             gfx_draw_text_layout(app_win->win.canvas, 150.0f, y0, layout, gfx_rgb(0, 0, 0));
             text_destroy_layout(layout);
 
-            y0 += metrics->line_height[i];
+            layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
+                            metrics->font[i], 10000.0f, metrics->line_height[i],
+                            TEXT_ALIGN_LEAD | TEXT_VALIGN_CENTER | TEXT_TRIM_WORD);
+            gfx_draw_text_layout(app_win->win.canvas, 300.0f, y0, layout, gfx_rgb(0, 0, 0));
+            text_destroy_layout(layout);
+
+            y0 += metrics->line_height[i] + 10.0f;
         }
     }
 

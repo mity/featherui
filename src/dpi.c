@@ -59,16 +59,24 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
         FontParams font_params = { 0 };
+        const FontMetrics* metrics = &font_theme->metrics[font_theme->metrics_index[i]];
+        float metrics_factor;
 
         font_params.locale_name = font_theme->locale_name;
         font_params.name = font_theme->font_name;
-        font_params.logical_size = font_theme->logical_size[i];
         font_params.size = font_theme->logical_size[i] * factor;
+        font_params.line_height = roundf(font_theme->line_height[i] * factor);
+        metrics_factor = font_params.size / (float)metrics->design_units_per_em;
+        font_params.baseline = font_params.line_height / 2.0f;
+        font_params.baseline += (metrics_factor * (float)metrics->optical_height) / 2.0f;
+        //font_params.baseline -= metrics_factor * (float)metrics->descent;
+        font_params.baseline = roundf(font_params.baseline);
+        font_params.logical_size = font_theme->logical_size[i];
         font_params.weight = font_theme->weight[i];
         font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
 
         dpi_metrics->font[i] = font_create(&font_params);
-        dpi_metrics->line_height[i] = roundf(font_theme->line_height[i] * factor);
+        dpi_metrics->line_height[i] = font_params.line_height;
     }
 
     impl->metrics[theme_id] = dpi_metrics;

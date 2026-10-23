@@ -60,7 +60,7 @@ struct FontTheme {
     FontWeight weight[FONTTHEME_TEXT_TYPE_COUNT];
     BYTE metrics_index[FONTTHEME_TEXT_TYPE_COUNT]; /* indexes into font_metrics */
 
-    FontMetrics font_metrics[];
+    FontMetrics metrics[];
 };
 
 

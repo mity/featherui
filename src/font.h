@@ -66,9 +66,11 @@ struct FontParams {
     const WCHAR* locale_name;
     const WCHAR* name;
     float size;             /* scaled by DPI and accessibility factor */
+    float line_height;
+    float baseline;
 
     /* These are optional; and used only if optional_mask enables them. */
-    float logical_size;     /* "unscaled" font size */
+    float logical_size;     /* "unscaled" font size (used for optical sizing) */
     FontWeight weight;
     FontStyle style;
     FontStretch stretch;
@@ -92,6 +94,7 @@ struct FontMetrics {
     INT16 line_gap;
     UINT16 cap_height;
     UINT16 x_height;
+    UINT16 optical_height;  /* dominating visual height approximation */
 };
 
 HRESULT font_get_metrics(const FontParams* params, FontMetrics* metrics);

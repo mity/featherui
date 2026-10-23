@@ -191,10 +191,10 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
         return HRESULT_FROM_WIN32(ERROR_OUTOFMEMORY);
     }
 
-    memcpy(&theme->font_metrics[0], &metrics_regular, sizeof(FontMetrics));
-    memcpy(&theme->font_metrics[1], &metrics_semibold, sizeof(FontMetrics));
+    memcpy(&theme->metrics[0], &metrics_regular, sizeof(FontMetrics));
+    memcpy(&theme->metrics[1], &metrics_semibold, sizeof(FontMetrics));
 
-    str_ptr = (WCHAR*)(&theme->font_metrics[3]);
+    str_ptr = (WCHAR*)(&theme->metrics[2]);
     if(locale_name != NULL) {
         wcscpy(str_ptr, locale_name);
         theme->locale_name = str_ptr;
@@ -233,20 +233,8 @@ fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id)
                         ? &metrics_segoe_regular : &metrics_segoe_semibold;
             FontMetrics* metrics = (font_map[i].weight == FONT_WEIGHT_REGULAR)
                         ? &metrics_regular : &metrics_semibold;
-            float optical_height_segoe;
-            float optical_height;
-
-            if(0 < metrics_segoe->cap_height && metrics_segoe->cap_height < metrics_segoe->ascent)
-                optical_height_segoe = (float) metrics_segoe->cap_height;
-            else
-                optical_height_segoe = (float) (metrics_segoe->ascent + metrics_segoe->descent);
-            optical_height_segoe /= (float) metrics_segoe->design_units_per_em;
-
-            if(0 < metrics->cap_height && metrics->cap_height < metrics->ascent)
-                optical_height = (float) metrics->cap_height;
-            else
-                optical_height = (float) (metrics->ascent + metrics->descent);
-            optical_height /= (float) metrics->design_units_per_em;
+            float optical_height_segoe = (float) metrics_segoe->optical_height / (float) metrics_segoe->design_units_per_em;
+            float optical_height = (float) metrics->optical_height / (float) metrics->design_units_per_em;
 
             theme->line_height[i] *= optical_height / optical_height_segoe;
         }
