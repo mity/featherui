@@ -27,7 +27,10 @@ struct UiSettings {
 };
 
 
-HRESULT uisettings_load(UiSettings* settings);
+void uisettings_reload(void);
+
+HRESULT uisettings_init(void);
+void uisettings_fini(void);
 
 
 #endif  /* FE_UISETTINGS_H */

@@ -16,7 +16,7 @@
 #define FE_DPI_H
 
 #include "misc.h"
-#include "text.h"
+#include "font.h"
 #include "fonttheme.h"
 
 
@@ -34,9 +34,9 @@ struct DpiMetrics {
 
     float dpi_factor_x;
     float dpi_factor_y;
+    float accessibility_scale_factor;
 
-    TextFont* text_font[FONTTHEME_TEXT_TYPE_COUNT];
-    TextFont* icon_font[FONTTHEME_TEXT_TYPE_COUNT];
+    Font* font[FONTTHEME_TEXT_TYPE_COUNT];
     float line_height[FONTTHEME_TEXT_TYPE_COUNT];
 };
 

@@ -128,18 +128,9 @@ colortheme_destroy(ColorThemeId id)
 
 
 void
-colortheme_reload_uisettings(void)
+colortheme_apply_uisettings(UiSettings* settings)
 {
-    UiSettings ui_settings;
-    HRESULT hr = E_FAIL;
-
-    hr = uisettings_load(&ui_settings);
-    if(FAILED(hr)) {
-        XTRACE_HR("uisettings_load() failed. Will continue using the old settings.");
-        return;
-    }
-
-    if(ui_settings.use_light_theme) {
+    if(settings->use_light_theme) {
         colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_LIGHT].impl;
         colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_LIGHT;
     } else {
@@ -158,17 +149,9 @@ HRESULT
 colortheme_init(void)
 {
     ColorThemeId id;
-    UiSettings ui_settings;
-    HRESULT hr = E_FAIL;
 
     for(id = 0; id < COLORTHEME_MAX_COUNT; id++)
         colortheme_array[id].impl = NULL;
-
-    hr = uisettings_load(&ui_settings);
-    if(FAILED(hr)) {
-        XTRACE_HR("uisettings_load() failed.");
-        return hr;
-    }
 
     colortheme_array[COLORTHEME_ID_LIGHT].impl = colortheme_alloc(NULL);
     colortheme_array[COLORTHEME_ID_LIGHT].base_id = COLORTHEME_ID_LIGHT;
@@ -188,13 +171,8 @@ colortheme_init(void)
 
     // TODO: mark everything in them as "explicitly set".
 
-    if(ui_settings.use_light_theme) {
-        colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_LIGHT].impl;
-        colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_LIGHT;
-    } else {
-        colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_DARK].impl;
-        colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_DARK;
-    }
+    colortheme_array[COLORTHEME_ID_SYSTEM].impl = colortheme_array[COLORTHEME_ID_LIGHT].impl;
+    colortheme_array[COLORTHEME_ID_SYSTEM].base_id = COLORTHEME_ID_LIGHT;
     colortheme_array[COLORTHEME_ID_SYSTEM].is_readonly = TRUE;
 
     colortheme_default_id = COLORTHEME_ID_SYSTEM;

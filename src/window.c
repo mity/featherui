@@ -16,6 +16,9 @@
 #include "window.h"
 
 
+List window_list;
+
+
 void
 window_WM_WINDOWPOSCHANGED(Window* win, const WINDOWPOS* pos)
 {
@@ -76,6 +79,7 @@ window_WM_NCCREATE(Window* win, HWND hwnd, const CREATESTRUCT* cs)
         return FALSE;
     }
 
+    list_append(&window_list, &win->node);
     return TRUE;
 }
 
@@ -86,10 +90,30 @@ window_WM_NCDESTROY(Window* win)
     if(win == NULL)
         return;
 
+    list_remove(&window_list, &win->node);
+
     if(win->dpi_info != NULL)
         dpi_detach(win->dpi_info);
     if(win->mon_info != NULL)
         monitor_detach(win->mon_info);
     if(win->canvas != NULL)
         gfx_destroy_canvas(win->canvas);
+}
+
+
+HRESULT
+window_init(void)
+{
+    list_init(&window_list);
+    return S_OK;
+}
+
+void
+window_fini(void)
+{
+    while(!list_is_empty(&window_list)) {
+        ListNode* head = list_head(&window_list);
+        Window* win = LIST_DATA(head, Window, node);
+        DestroyWindow(win->hwnd);
+    }
 }

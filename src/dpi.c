@@ -12,6 +12,7 @@
  * - Commercial license; see LICENSE.commercial.md.
  */
 
+#include <math.h>
 #include "dpi.h"
 #include "libex/list.h"
 
@@ -34,6 +35,7 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     DpiImpl* impl = CONTAINEROF(dpi, DpiImpl, info);
     DpiMetrics* dpi_metrics = impl->metrics[theme_id];
     const FontTheme* font_theme;
+    float factor;
     unsigned i;
 
     if(dpi_metrics != NULL)
@@ -51,29 +53,30 @@ dpi_metrics(const DpiInfo* dpi, FontThemeId theme_id)
     dpi_metrics->dpi_y = dpi->dpi_y;
     dpi_metrics->dpi_factor_x = (float)dpi->dpi_x / 96.0;
     dpi_metrics->dpi_factor_y = (float)dpi->dpi_y / 96.0;
+    dpi_metrics->accessibility_scale_factor = font_theme->accessibility_scale_factor;
 
-    // TODO: add support for accessibility text size factor.
+    factor = dpi_metrics->dpi_factor_y * dpi_metrics->accessibility_scale_factor;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        dpi_metrics->text_font[i] = text_create_font_ex(
-                font_theme->text_font_name,
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y,
-                font_theme->font_weight[i],
-                TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL
-        );
+        FontParams font_params = { 0 };
+        const FontMetrics* metrics = &font_theme->metrics[font_theme->metrics_index[i]];
+        float metrics_factor;
 
-        dpi_metrics->icon_font[i] = text_create_font_ex(
-                font_theme->icon_font_name,
-                font_theme->font_size[i] * dpi_metrics->dpi_factor_y,
-                font_theme->font_weight[i],
-                TEXT_FONT_STYLE_NORMAL,
-                TEXT_FONT_STRETCH_NORMAL
-        );
+        font_params.locale_name = font_theme->locale_name;
+        font_params.name = font_theme->font_name;
+        font_params.size = font_theme->logical_size[i] * factor;
+        font_params.line_height = roundf(font_theme->line_height[i] * factor);
+        metrics_factor = font_params.size / (float)metrics->design_units_per_em;
+        font_params.baseline = font_params.line_height / 2.0f;
+        font_params.baseline += (metrics_factor * (float)metrics->optical_height) / 2.0f;
+        //font_params.baseline -= metrics_factor * (float)metrics->descent;
+        font_params.baseline = roundf(font_params.baseline);
+        font_params.logical_size = font_theme->logical_size[i];
+        font_params.weight = font_theme->weight[i];
+        font_params.optional_mask = FONT_PARAMS_LOGICAL_SIZE | FONT_PARAMS_WEIGHT;
 
-        // TODO: error handling?
-
-        dpi_metrics->line_height[i] = dpi_metrics->dpi_factor_y * font_theme->line_height[i];
+        dpi_metrics->font[i] = font_create(&font_params);
+        dpi_metrics->line_height[i] = font_params.line_height;
     }
 
     impl->metrics[theme_id] = dpi_metrics;
@@ -86,10 +89,8 @@ dpi_destroy_metrics(DpiMetrics* metrics)
     unsigned i;
 
     for(i = 0; i < FONTTHEME_TEXT_TYPE_COUNT; i++) {
-        if(metrics->text_font[i] != NULL)
-            text_destroy_font(metrics->text_font[i]);
-        if(metrics->icon_font[i] != NULL)
-            text_destroy_font(metrics->icon_font[i]);
+        if(metrics->font[i] != NULL)
+            font_destroy(metrics->font[i]);
     }
 
     fe_free(metrics);

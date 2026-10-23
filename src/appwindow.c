@@ -14,8 +14,8 @@
 
 #include <feather/appwindow.h>
 
-#include "misc.h"
 #include "appwindow.h"
+#include "glyphicon.h"
 #include "window.h"
 #include "mainloop.h"
 #include "gfx.h"
@@ -59,17 +59,36 @@ appwindow_WM_PAINT(AppWindow* app_win)
     gfx_fill_rounded_rect(app_win->win.canvas, 10.0f, 110.0f, 100.0f, 150.0f, 8.0f, 8.0f, gfx_rgb(0, 0, 0));
 
     {
-        TextFont* font;
+        const DpiMetrics* metrics;
         TextLayout* layout;
+        unsigned i;
+        float y0;
+        GlyphIconId icon_id = glyphicon_get(0xe704);
 
-        font = text_create_font(text_default_text_font_name, 14.0);
+        metrics = dpi_metrics(app_win->win.dpi_info, 0);
 
-        layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
-                        font, 100.0f, 20.0f,
-                        TEXT_ALIGN_LEAD | TEXT_VALIGN_TOP | TEXT_TRIM_WORD);
-        gfx_draw_text_layout(app_win->win.canvas, 150.0f, 50.0f, layout, gfx_rgb(0, 0, 0));
-        text_destroy_layout(layout);
-        text_destroy_font(font);
+        y0 = 10.0f;
+        for(i = 0; i < 9; i++) {
+            gfx_draw_rect(app_win->win.canvas, 150.0f - 2.5f, y0 - 2.5f,
+                        300.5f + 10 * metrics->line_height[i], y0 + metrics->line_height[i] + 2.5f, gfx_rgb(0, 0, 0));
+
+            gfx_draw_glyph_icon(app_win->win.canvas, 175.0f, y0 + metrics->line_height[i] / 2,
+                        glyphicon_preferred_size(metrics->line_height[i]), icon_id, gfx_rgb(0,0,0));
+
+            layout = text_create_layout(L"臺灣是", wcslen(L"臺灣是"),
+                            metrics->font[i], 10000.0f, metrics->line_height[i],
+                            TEXT_ALIGN_LEAD | TEXT_VALIGN_CENTER | TEXT_TRIM_WORD);
+            gfx_draw_text_layout(app_win->win.canvas, 200.0f, y0, layout, gfx_rgb(0, 0, 0));
+            text_destroy_layout(layout);
+
+            layout = text_create_layout(L"Hello world", wcslen(L"Hello world"),
+                            metrics->font[i], 10000.0f, metrics->line_height[i],
+                            TEXT_ALIGN_LEAD | TEXT_VALIGN_CENTER | TEXT_TRIM_WORD);
+            gfx_draw_text_layout(app_win->win.canvas, 400.0f, y0, layout, gfx_rgb(0, 0, 0));
+            text_destroy_layout(layout);
+
+            y0 += metrics->line_height[i] + 10.0f;
+        }
     }
 
     hr = gfx_end_draw(app_win->win.canvas, &ps);
@@ -198,7 +217,7 @@ feAppWindow_Create(HWND* pHwnd)
 
     hwnd = CreateWindowEx(WS_EX_APPWINDOW, appwindow_classname, L"App Name",
                     WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                    500, 300, NULL, NULL,
+                    600, 400, NULL, NULL,
                     dll_feather, 0);
     if(hwnd == NULL) {
         XTRACE_ERR("CreateWindowEx()");

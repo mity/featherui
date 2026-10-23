@@ -13,7 +13,7 @@
  */
 
 #include "system.h"
-#include "colortheme.h"
+#include "uisettings.h"
 
 
 /************************************
@@ -171,7 +171,7 @@ static void
 update_config(DWORD flags)
 {
     if(flags & UPDATE_ImmersiveColorSet)
-        colortheme_reload_uisettings();
+        uisettings_reload();
 }
 
 

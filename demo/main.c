@@ -23,6 +23,7 @@ wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nSh
     UNUSED(nShowCmd);
 
     feInitialize(NULL, NULL, 0);
+    //feInitialize(L"zh-CN", NULL, 0);
 
     feAppWindow_Create(NULL);
     feRun(&exit_code);

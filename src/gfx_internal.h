@@ -44,4 +44,15 @@
 #endif
 
 
+/* Created during feInitialize().
+ * Note dwrite_factrory3 is always available, dwrite_factrory6 may be NULL
+ * if not supported. */
+extern IDWriteFactory3* dwrite_factory3;
+extern IDWriteFactory6* dwrite_factory6;
+
+extern IDWriteFontFallback* dwrite_font_fallback;
+
+extern IDWriteFontFace3* glyphicon_font_face;
+
+
 #endif  /* GFX_INTERNAL_H */

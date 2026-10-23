@@ -16,6 +16,8 @@
 #define FE_FONTTHEME_H
 
 #include "misc.h"
+#include "font.h"
+#include "uisettings.h"
 
 
 /* We don't want too many active themes at the same time. */
@@ -50,20 +52,24 @@ extern FontThemeId fonttheme_default_id;
 typedef struct FontTheme FontTheme;
 struct FontTheme {
     const WCHAR* locale_name;
-
-    const WCHAR* text_font_name;
-    const WCHAR* icon_font_name;
-
-    float font_weight[FONTTHEME_TEXT_TYPE_COUNT];
-    float font_size[FONTTHEME_TEXT_TYPE_COUNT];
+    float accessibility_scale_factor;
     float line_height[FONTTHEME_TEXT_TYPE_COUNT];
+
+    const WCHAR* font_name;
+    float logical_size[FONTTHEME_TEXT_TYPE_COUNT];
+    FontWeight weight[FONTTHEME_TEXT_TYPE_COUNT];
+    BYTE metrics_index[FONTTHEME_TEXT_TYPE_COUNT]; /* indexes into font_metrics */
+
+    FontMetrics metrics[];
 };
 
 
 const FontTheme* fonttheme_get(FontThemeId id);
 
-HRESULT fonttheme_create(FontThemeId base_id, FontThemeId* out_id);
+HRESULT fonttheme_create_for_locale(const WCHAR* locale_name, FontThemeId* out_id);
 void fonttheme_destroy(FontThemeId id);
+
+void fonttheme_apply_uisettings(UiSettings* settings);
 
 HRESULT fonttheme_init(void);
 void fonttheme_fini(void);

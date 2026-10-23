@@ -21,10 +21,13 @@
 #include "colortheme.h"
 #include "dpi.h"
 #include "fonttheme.h"
+#include "glyphicon.h"
 #include "gfx.h"
 #include "monitor.h"
 #include "system.h"
 #include "text.h"
+#include "uisettings.h"
+#include "window.h"
 
 
 HMODULE dll_feather = NULL;
@@ -55,10 +58,13 @@ static const struct {
     MODULE(system_init,     system_fini),       /* keep 1st */
     MODULE(gfx_init,        gfx_fini),
     MODULE(text_init,       text_fini),
+    MODULE(uisettings_init, uisettings_fini),
     MODULE(colortheme_init, colortheme_fini),
     MODULE(fonttheme_init,  fonttheme_fini),
+    MODULE(glyphicon_init,  glyphicon_fini),
     MODULE(monitor_init,    monitor_fini),
     MODULE(dpi_init,        dpi_fini),
+    MODULE(window_init,     window_fini),
     MODULE(appwindow_init,  appwindow_fini)
 
 #undef MODULE

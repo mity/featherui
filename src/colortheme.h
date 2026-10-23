@@ -17,6 +17,7 @@
 
 #include "misc.h"
 #include "gfx.h"
+#include "uisettings.h"
 
 
 /* We don't want too many active themes at the same time. */
@@ -71,7 +72,7 @@ void colortheme_destroy(ColorThemeId id);
 
 
 /* Called from system.c when it gets notified about change of system theme colors. */
-void colortheme_reload_uisettings(void);
+void colortheme_apply_uisettings(UiSettings* settings);
 
 HRESULT colortheme_init(void);
 void colortheme_fini(void);
